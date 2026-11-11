@@ -109,7 +109,18 @@ These checks require execution on a real iPhone; their presence here does not me
 4. Select **Any iOS Device (arm64)**, then **Product → Archive**. In Organizer choose **Distribute App → App Store Connect → Upload**.
 5. After processing, add TestFlight internal testers. External testers require Apple's beta review. Submit for App Store review only after the release checks pass.
 
-The supplied workflows build simulator checks and an unsigned device archive. They do not upload a signed release or contain certificates, provisioning profiles, or App Store Connect credentials. Keep these secrets out of Git. A TestFlight or ad-hoc IPA requires a signed archive and the appropriate Apple Developer distribution configuration; create and export it through Xcode Organizer.
+### Upload from GitHub Actions, without a Mac
+
+The **TestFlight** workflow archives, signs, and uploads a build when you run it by hand from the Actions tab. It has not been run against a real team yet, so treat the first run as a test. It needs a paid Apple Developer Program membership; free provisioning cannot upload to TestFlight.
+
+1. In [App Store Connect → Users and Access → Integrations](https://appstoreconnect.apple.com/access/integrations/api), create a team API key with the **Admin** role, which automatic signing needs to create certificates and profiles. Download the `.p8` file once.
+2. Create the App Store Connect app record for `com.jonisuominen.readout`.
+3. In the GitHub repository, open **Settings → Secrets and variables → Actions** and add `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_KEY_P8` (the whole text of the `.p8` file).
+4. Run **TestFlight** from the Actions tab. The build number is the workflow run number. Processing takes a few minutes before the build shows under TestFlight.
+
+TestFlight builds last 90 days, so the weekly re-signing of a free-provisioned install is no longer needed.
+
+The other workflows build simulator checks and an unsigned device archive, and contain no certificates, provisioning profiles, or App Store Connect credentials. Keep these secrets out of Git; the TestFlight workflow reads them only from repository secrets and deletes the key file when it finishes.
 
 ## Troubleshooting
 

@@ -1,0 +1,124 @@
+name: TestFlight
+
+# Signs the app with your paid Apple Developer team and uploads it to
+# App Store Connect. Run it by hand from the Actions tab. It needs these
+# repository secrets (see DEPLOYMENT.md):
+#   APPLE_TEAM_ID   your 10-character team ID
+#   ASC_KEY_ID      App Store Connect API key ID
+#   ASC_ISSUER_ID   App Store Connect API issuer ID
+#   ASC_KEY_P8      the full text of the AuthKey_XXXX.p8 file
+on:
+  workflow_dispatch:
+    inputs:
+      oura_broker_url:
+        description: Public HTTPS Oura broker base URL (optional; Apple Health mode works without it)
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: Archive, sign, and upload to TestFlight
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      OURA_BROKER_URL: ${{ inputs.oura_broker_url || vars.OURA_BROKER_URL || '' }}
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - name: Check signing secrets
+        run: |
+          missing=()
+          for name in TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            [[ -n "${!name}" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} )); then
+            echo "::error::Missing signing secrets: ${missing[*]}. TestFlight needs a paid Apple Developer team; see DEPLOYMENT.md."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Write App Store Connect API key
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Archive with automatic signing
+        run: |
+          ARGS=(archive
+            -project WeatherUV.xcodeproj
+            -scheme WeatherUV
+            -configuration Release
+            -destination 'generic/platform=iOS'
+            -archivePath "$RUNNER_TEMP/Readout.xcarchive"
+            -allowProvisioningUpdates
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+            -authenticationKeyID "$ASC_KEY_ID"
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            DEVELOPMENT_TEAM="$TEAM_ID"
+            CODE_SIGN_STYLE=Automatic
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER")
+          if [[ -n "$OURA_BROKER_URL" ]]; then ARGS+=("OURA_BROKER_URL=$OURA_BROKER_URL"); fi
+          xcodebuild "${ARGS[@]}"
+
+      - name: Upload to App Store Connect
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Readout.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Remove API key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"
+
+      - name: Summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<SUMMARY
+          ### Uploaded build $BUILD_NUMBER to App Store Connect
+
+          Apple processes the build for a few minutes before it appears under
+          TestFlight. TestFlight builds last 90 days, not 7.
+          SUMMARY
