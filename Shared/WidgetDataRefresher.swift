@@ -66,7 +66,7 @@ enum WidgetDataRefresher {
             let metrics = try await connector.refresh()
             // Disconnecting or changing calendar privacy during the fetch wins.
             guard DashboardStore.connectedSources.contains(source),
-                  source != .googleCalendar || calendarRevision == CalendarPreferences.revision else { return false }
+                  source != .calendar || calendarRevision == CalendarPreferences.revision else { return false }
             DashboardStore.replaceMetrics(metrics, for: source)
             return true
         } catch {
@@ -85,7 +85,7 @@ enum WidgetDataRefresher {
             return HealthKitConnector()
         case .oura:
             return OuraConnectionMethod.stored == .appleHealth ? OuraHealthConnector() : nil
-        case .googleCalendar:
+        case .calendar:
             // Without full access here, leave the snapshot alone; the app clears
             // it when permission is revoked.
             return EKEventStore.authorizationStatus(for: .event) == .fullAccess ? CalendarConnector() : nil

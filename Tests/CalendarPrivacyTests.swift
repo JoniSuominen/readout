@@ -82,7 +82,7 @@ final class CalendarPrivacyTests: XCTestCase {
         XCTAssertGreaterThan(CalendarPreferences.revision, previousRevision)
         XCTAssertFalse(CalendarPreferences.showEventTitles)
         XCTAssertEqual(DashboardStore.metrics.map(\.id), ["steps"])
-        XCTAssertNil(DashboardStore.updatedAt(for: .googleCalendar))
+        XCTAssertNil(DashboardStore.updatedAt(for: .calendar))
         XCTAssertNotNil(DashboardStore.updatedAt(for: .appleHealth))
     }
 
@@ -96,7 +96,7 @@ final class CalendarPrivacyTests: XCTestCase {
         XCTAssertGreaterThan(CalendarPreferences.revision, previousRevision)
         XCTAssertTrue(CalendarPreferences.selectedCalendarIDs.isEmpty)
         XCTAssertEqual(DashboardStore.metrics.map(\.id), ["steps"])
-        XCTAssertNil(DashboardStore.updatedAt(for: .googleCalendar))
+        XCTAssertNil(DashboardStore.updatedAt(for: .calendar))
     }
 
     func testResetClearsSelectionTitlesAndSnapshotWithoutResettingRevision() {
@@ -110,7 +110,7 @@ final class CalendarPrivacyTests: XCTestCase {
         XCTAssertGreaterThan(CalendarPreferences.revision, previousRevision)
         XCTAssertTrue(CalendarPreferences.selectedCalendarIDs.isEmpty)
         XCTAssertFalse(CalendarPreferences.showEventTitles)
-        XCTAssertFalse(DashboardStore.metrics.contains { $0.source == .googleCalendar })
+        XCTAssertFalse(DashboardStore.metrics.contains { $0.source == .calendar })
     }
 
     @MainActor
@@ -131,7 +131,7 @@ final class CalendarPrivacyTests: XCTestCase {
             XCTAssertEqual(reads, 0)
             XCTAssertTrue(store.calendars.isEmpty)
             XCTAssertNotNil(store.errorMessage)
-            XCTAssertFalse(DashboardStore.metrics.contains { $0.source == .googleCalendar })
+            XCTAssertFalse(DashboardStore.metrics.contains { $0.source == .calendar })
         }
     }
 
@@ -176,6 +176,6 @@ final class CalendarPrivacyTests: XCTestCase {
         ], for: .appleHealth)
         DashboardStore.replaceMetrics([
             CalendarSnapshotBuilder.metric(for: event("Private appointment"), showEventTitles: true)
-        ], for: .googleCalendar)
+        ], for: .calendar)
     }
 }

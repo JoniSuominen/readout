@@ -431,15 +431,15 @@ final class WidgetRefreshTests: XCTestCase {
 
     @MainActor
     func testCalendarPrivacyChangeDuringRefreshDiscardsTheFetchedEvent() async {
-        DashboardStore.connectedSources = [.googleCalendar]
-        let calendar = StubConnector(source: .googleCalendar, result: .success([sample("nextEvent", .googleCalendar)]))
+        DashboardStore.connectedSources = [.calendar]
+        let calendar = StubConnector(source: .calendar, result: .success([sample("nextEvent", .calendar)]))
         calendar.onRefresh = { CalendarPreferences.showEventTitles = true }
 
         await WidgetDataRefresher.refresh(userInitiated: true, now: .now) { _ in calendar }
 
         XCTAssertEqual(calendar.refreshCount, 1)
-        XCTAssertFalse(DashboardStore.metrics.contains { $0.source == .googleCalendar })
-        XCTAssertNil(DashboardStore.updatedAt(for: .googleCalendar))
+        XCTAssertFalse(DashboardStore.metrics.contains { $0.source == .calendar })
+        XCTAssertNil(DashboardStore.updatedAt(for: .calendar))
     }
 
     private func sample(_ id: String, _ source: DataSource, value: String = "1") -> DashboardMetric {

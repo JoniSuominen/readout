@@ -230,7 +230,7 @@ final class ConnectorManager: ObservableObject {
 
     func refreshIfNeeded(minimumInterval: TimeInterval = 300) async {
         reloadFromStore()
-        if let calendar = connectors[.googleCalendar] as? CalendarConnector,
+        if let calendar = connectors[.calendar] as? CalendarConnector,
            calendar.clearSnapshotIfAccessUnavailable() {
             calendarPreferencesDidChange()
         }
@@ -277,21 +277,21 @@ final class ConnectorManager: ObservableObject {
     }
 
     func calendarPreferencesDidChange() {
-        operationIDs[.googleCalendar] = UUID()
-        activities[.googleCalendar] = .idle
+        operationIDs[.calendar] = UUID()
+        activities[.calendar] = .idle
         synchronizeFromStore()
     }
 
     func applyCalendarPreferences() async {
         calendarPreferencesDidChange()
-        await refresh(.googleCalendar)
+        await refresh(.calendar)
     }
 
     func activity(for source: DataSource) -> Activity { activities[source] ?? .idle }
 
     private func canPublish(_ source: DataSource, operation: UUID, calendarRevision: Int) -> Bool {
         guard operationIDs[source] == operation else { return false }
-        guard source != .googleCalendar || calendarRevision == CalendarPreferences.revision else {
+        guard source != .calendar || calendarRevision == CalendarPreferences.revision else {
             activities[source] = .idle
             synchronizeFromStore()
             return false

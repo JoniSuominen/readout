@@ -22,7 +22,7 @@ enum MetricCatalog {
         .init(id: "heartRate", name: "Heart rate", source: .appleHealth, symbol: "heart.fill"),
         .init(id: "hrv", name: "HRV", source: .appleHealth, symbol: "heart.fill"),
         .init(id: "walkingHeartRate", name: "Walking heart rate", source: .appleHealth, symbol: "heart.fill"),
-        .init(id: "nextEvent", name: "Next event", source: .googleCalendar, symbol: "calendar")
+        .init(id: "nextEvent", name: "Next event", source: .calendar, symbol: "calendar")
     ]
 
     static func descriptor(for id: String) -> MetricDescriptor? {

@@ -4,13 +4,14 @@ enum DataSource: String, Codable, CaseIterable, Identifiable {
     case weather = "Weather"
     case appleHealth = "Apple Health"
     case oura = "Oura"
-    case googleCalendar = "Google Calendar"
+    /// The raw value is the stored key from when only Google was planned; keep it.
+    case calendar = "Google Calendar"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .googleCalendar: return "Calendar"
+        case .calendar: return "Calendar"
         default: return rawValue
         }
     }
@@ -20,7 +21,7 @@ enum DataSource: String, Codable, CaseIterable, Identifiable {
         case .weather: return "cloud.sun.fill"
         case .appleHealth: return "heart.fill"
         case .oura: return "circle.hexagongrid.fill"
-        case .googleCalendar: return "calendar"
+        case .calendar: return "calendar"
         }
     }
 }
@@ -117,7 +118,7 @@ struct DashboardMetric: Codable, Identifiable, Hashable {
         .init(id: "heartRate", source: .appleHealth, title: "Heart rate", value: "71", detail: "bpm · 14:05", symbol: "heart.fill", tint: "pink"),
         .init(id: "hrv", source: .appleHealth, title: "HRV", value: "48", detail: "ms · 07:12", symbol: "heart.fill", tint: "pink"),
         .init(id: "walkingHeartRate", source: .appleHealth, title: "Walking heart rate", value: "98", detail: "bpm · 31 Oct", symbol: "heart.fill", tint: "pink"),
-        .init(id: "nextEvent", source: .googleCalendar, title: "Up next", value: "Busy", detail: "", symbol: "calendar", tint: "blue",
+        .init(id: "nextEvent", source: .calendar, title: "Up next", value: "Busy", detail: "", symbol: "calendar", tint: "blue",
               observedAt: Date.now.addingTimeInterval(24 * 60), privateValue: "Design sync", endsAt: Date.now.addingTimeInterval(54 * 60))
     ]
 }
@@ -223,14 +224,14 @@ enum DashboardStore {
         guard defaults.integer(forKey: privacyVersionKey) < 1 else { return }
         if let data = defaults.data(forKey: metricsKey),
            let oldMetrics = try? JSONDecoder().decode([DashboardMetric].self, from: data) {
-            let safeMetrics = oldMetrics.filter { $0.source != .googleCalendar }
+            let safeMetrics = oldMetrics.filter { $0.source != .calendar }
             defaults.set(try? JSONEncoder().encode(safeMetrics), forKey: metricsKey)
         }
         var updates = defaults.dictionary(forKey: sourceUpdatesKey) ?? [:]
-        updates.removeValue(forKey: DataSource.googleCalendar.rawValue)
+        updates.removeValue(forKey: DataSource.calendar.rawValue)
         defaults.set(updates, forKey: sourceUpdatesKey)
         var errors = defaults.dictionary(forKey: sourceErrorsKey) ?? [:]
-        errors.removeValue(forKey: DataSource.googleCalendar.rawValue)
+        errors.removeValue(forKey: DataSource.calendar.rawValue)
         defaults.set(errors, forKey: sourceErrorsKey)
         let remainingDates = updates.values.compactMap { $0 as? Date }
         if let latest = remainingDates.max() { defaults.set(latest, forKey: updatedAtKey) }

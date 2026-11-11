@@ -217,7 +217,7 @@ final class WidgetPrivacyTests: XCTestCase {
         let encoded = String(decoding: try JSONEncoder().encode(discreet), as: UTF8.self)
         XCTAssertFalse(encoded.contains("SECRET"))
 
-        let shownCalendar = WidgetPrivacy.render(oldMetrics.filter { $0.source == .googleCalendar }, mode: .showValues)
+        let shownCalendar = WidgetPrivacy.render(oldMetrics.filter { $0.source == .calendar }, mode: .showValues)
         XCTAssertEqual(shownCalendar.first?.value, "Busy")
         XCTAssertFalse(String(decoding: try JSONEncoder().encode(shownCalendar), as: UTF8.self).contains("SECRET"))
     }
@@ -251,7 +251,7 @@ final class WidgetPrivacyTests: XCTestCase {
         observedAt: Date? = nil
     ) -> DashboardMetric {
         DashboardMetric(
-            id: "nextEvent", source: .googleCalendar, title: "SECRET calendar title", value: value,
+            id: "nextEvent", source: .calendar, title: "SECRET calendar title", value: value,
             detail: "SECRET calendar location", symbol: "calendar", tint: "blue",
             observedAt: observedAt, privateValue: privateValue
         )

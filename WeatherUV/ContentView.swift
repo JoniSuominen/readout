@@ -280,7 +280,7 @@ private struct SourcesView: View {
                 Link("Weather data by Open-Meteo.com", destination: URL(string: "https://open-meteo.com/")!)
                     .font(.footnote)
             }
-            if source == .googleCalendar && connectorManager.connectedSources.contains(source) {
+            if source == .calendar && connectorManager.connectedSources.contains(source) {
                 Button {
                     showingCalendarSettings = true
                 } label: {
@@ -335,7 +335,7 @@ private struct SourcesView: View {
         case .weather: return .orange
         case .appleHealth: return .pink
         case .oura: return .purple
-        case .googleCalendar: return .blue
+        case .calendar: return .blue
         }
     }
 
@@ -347,7 +347,7 @@ private struct SourcesView: View {
             return connectorManager.ouraConnectionMethod == .direct
                 ? "Readiness and sleep from your Oura account"
                 : "Oura sleep shared with Apple Health"
-        case .googleCalendar: return "Calendars on this iPhone, including Google accounts"
+        case .calendar: return "Calendars on this iPhone, including Google accounts"
         }
     }
 }
@@ -363,8 +363,8 @@ private struct CalendarSettingsView: View {
 
     private var controlsUnavailable: Bool {
         connectorManager.isDeletingLocalData ||
-        !connectorManager.connectedSources.contains(.googleCalendar) ||
-        connectorManager.activity(for: .googleCalendar) == .disconnecting
+        !connectorManager.connectedSources.contains(.calendar) ||
+        connectorManager.activity(for: .calendar) == .disconnecting
     }
 
     var body: some View {
@@ -477,7 +477,7 @@ private struct CalendarSettingsView: View {
         // The preference setter already removed the shared snapshot. Drop the
         // in-memory copy before the asynchronous fetch can suspend.
         connectorManager.calendarPreferencesDidChange()
-        Task { await connectorManager.refresh(.googleCalendar) }
+        Task { await connectorManager.refresh(.calendar) }
     }
 
     private func loadCalendars() async {
@@ -545,7 +545,7 @@ private struct PermissionPrimer: View {
             return "Sign in with Oura to read your readiness and sleep. Oura and a secure sign-in service handle authorization and credential refresh. Access credentials are protected in the iOS Keychain. You can disconnect from Sources at any time."
         case .oura:
             return "Reads sleep records from Apple Health and shows only records written by Oura. First enable Apple Health sharing in the Oura app. This connection does not include Oura Readiness or sleep scores."
-        case .googleCalendar:
+        case .calendar:
             return "Reads calendars on this iPhone, including Google accounts already added to iOS. After connecting, choose which calendars to include; none are selected automatically. Event titles stay hidden unless you turn them on. Your events are never changed."
         }
     }

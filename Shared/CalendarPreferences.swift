@@ -50,7 +50,7 @@ enum CalendarPreferences {
 
     /// Clear private data before refreshing or waiting on a permission prompt.
     static func invalidateSnapshot() {
-        DashboardStore.removeMetrics(for: .googleCalendar)
+        DashboardStore.removeMetrics(for: .calendar)
         WidgetCenter.shared.reloadAllTimelines()
     }
 }
@@ -99,7 +99,7 @@ enum CalendarSnapshotBuilder {
         }
         return DashboardMetric(
             id: "nextEvent",
-            source: .googleCalendar,
+            source: .calendar,
             title: "Up next",
             value: event == nil ? "No upcoming events" : "Busy",
             detail: detail,

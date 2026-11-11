@@ -26,7 +26,7 @@ enum WidgetPrivacy {
     }
 
     private static func render(_ metric: DashboardMetric, mode: WidgetPrivacyMode) -> DashboardMetric {
-        if metric.source == .googleCalendar {
+        if metric.source == .calendar {
             return renderCalendar(metric, mode: mode)
         }
         if metric.source == .weather {

@@ -37,8 +37,8 @@ final class WidgetDataTests: XCTestCase {
          {"id":"nextEvent","source":"Google Calendar","title":"Up next","value":"Confidential appointment","detail":"10:30","symbol":"calendar","tint":"blue"}]
         """
         defaults.set(Data(json.utf8), forKey: "dashboard.metrics")
-        defaults.set([DataSource.appleHealth.rawValue: healthFetch, DataSource.googleCalendar.rawValue: calendarFetch], forKey: "dashboard.sourceUpdates")
-        defaults.set([DataSource.appleHealth.rawValue: "Health unavailable", DataSource.googleCalendar.rawValue: "Calendar unavailable"], forKey: "dashboard.sourceErrors")
+        defaults.set([DataSource.appleHealth.rawValue: healthFetch, DataSource.calendar.rawValue: calendarFetch], forKey: "dashboard.sourceUpdates")
+        defaults.set([DataSource.appleHealth.rawValue: "Health unavailable", DataSource.calendar.rawValue: "Calendar unavailable"], forKey: "dashboard.sourceErrors")
         defaults.set(calendarFetch, forKey: "dashboard.updatedAt")
         defaults.removeObject(forKey: "dashboard.privacyVersion")
 
@@ -49,17 +49,17 @@ final class WidgetDataTests: XCTestCase {
         XCTAssertEqual(DashboardStore.updatedAt(for: .appleHealth), healthFetch)
         XCTAssertEqual(DashboardStore.updatedAt, healthFetch)
         XCTAssertEqual(DashboardStore.error(for: .appleHealth), "Health unavailable")
-        XCTAssertNil(DashboardStore.updatedAt(for: .googleCalendar))
-        XCTAssertNil(DashboardStore.error(for: .googleCalendar))
+        XCTAssertNil(DashboardStore.updatedAt(for: .calendar))
+        XCTAssertNil(DashboardStore.error(for: .calendar))
         let savedData = try XCTUnwrap(defaults.data(forKey: "dashboard.metrics"))
         XCTAssertFalse(String(decoding: savedData, as: UTF8.self).contains("Confidential appointment"))
 
         // The migration is one-time: new titles explicitly opted into under the
         // new schema must not disappear on the next widget or app cache read.
         CalendarPreferences.showEventTitles = true
-        let allowedEvent = DashboardMetric(id: "nextEvent", source: .googleCalendar, title: "Up next", value: "Busy",
+        let allowedEvent = DashboardMetric(id: "nextEvent", source: .calendar, title: "Up next", value: "Busy",
                                           detail: "10:30", symbol: "calendar", tint: "blue", privateValue: "Allowed title")
-        DashboardStore.replaceMetrics([allowedEvent], for: .googleCalendar)
+        DashboardStore.replaceMetrics([allowedEvent], for: .calendar)
         XCTAssertTrue(DashboardStore.metrics.contains(allowedEvent))
         XCTAssertEqual(DashboardStore.error(for: .appleHealth), "Health unavailable")
     }
@@ -71,15 +71,15 @@ final class WidgetDataTests: XCTestCase {
         [{"id":"nextEvent","source":"Google Calendar","title":"Up next","value":"Private appointment","detail":"10:30","symbol":"calendar","tint":"blue"}]
         """
         defaults.set(Data(json.utf8), forKey: "dashboard.metrics")
-        defaults.set([DataSource.googleCalendar.rawValue: calendarFetch], forKey: "dashboard.sourceUpdates")
-        defaults.set([DataSource.googleCalendar.rawValue: "Permission revoked"], forKey: "dashboard.sourceErrors")
+        defaults.set([DataSource.calendar.rawValue: calendarFetch], forKey: "dashboard.sourceUpdates")
+        defaults.set([DataSource.calendar.rawValue: "Permission revoked"], forKey: "dashboard.sourceErrors")
         defaults.set(calendarFetch, forKey: "dashboard.updatedAt")
         defaults.removeObject(forKey: "dashboard.privacyVersion")
 
         XCTAssertTrue(DashboardStore.metrics.isEmpty)
         XCTAssertNil(DashboardStore.updatedAt)
-        XCTAssertNil(DashboardStore.updatedAt(for: .googleCalendar))
-        XCTAssertNil(DashboardStore.error(for: .googleCalendar))
+        XCTAssertNil(DashboardStore.updatedAt(for: .calendar))
+        XCTAssertNil(DashboardStore.error(for: .calendar))
         let savedData = try XCTUnwrap(defaults.data(forKey: "dashboard.metrics"))
         XCTAssertFalse(String(decoding: savedData, as: UTF8.self).contains("Private appointment"))
     }

@@ -2,7 +2,7 @@ import EventKit
 import Foundation
 
 final class CalendarConnector: DashboardConnector {
-    let source: DataSource = .googleCalendar
+    let source: DataSource = .calendar
 
     private let eventStore: EKEventStore
 
@@ -21,7 +21,7 @@ final class CalendarConnector: DashboardConnector {
     @discardableResult
     func clearSnapshotIfAccessUnavailable() -> Bool {
         guard EKEventStore.authorizationStatus(for: .event) != .fullAccess else { return false }
-        guard DashboardStore.metrics.contains(where: { $0.source == .googleCalendar }) else { return false }
+        guard DashboardStore.metrics.contains(where: { $0.source == .calendar }) else { return false }
         CalendarPreferences.invalidateSnapshot()
         return true
     }

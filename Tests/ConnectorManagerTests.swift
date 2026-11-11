@@ -18,10 +18,10 @@ final class ConnectorManagerTests: XCTestCase {
     @MainActor
     func testForegroundRefreshSkipsFreshSourcesButUpdatesOldOnes() async {
         let health = MockDashboardConnector(source: .appleHealth)
-        let calendar = MockDashboardConnector(source: .googleCalendar)
-        DashboardStore.connectedSources = [.appleHealth, .googleCalendar]
+        let calendar = MockDashboardConnector(source: .calendar)
+        DashboardStore.connectedSources = [.appleHealth, .calendar]
         DashboardStore.replaceMetrics([health.metric], for: .appleHealth, fetchedAt: .now.addingTimeInterval(-600))
-        DashboardStore.replaceMetrics([calendar.metric], for: .googleCalendar)
+        DashboardStore.replaceMetrics([calendar.metric], for: .calendar)
         let manager = ConnectorManager(connectors: [health, calendar], directOuraConnector: MockDashboardConnector(source: .oura))
         await manager.refreshIfNeeded()
         XCTAssertEqual(health.refreshCount, 1)
@@ -31,16 +31,16 @@ final class ConnectorManagerTests: XCTestCase {
     @MainActor
     func testBackgroundRefreshSkipsSourcesAWidgetJustFetched() async {
         let health = MockDashboardConnector(source: .appleHealth)
-        let calendar = MockDashboardConnector(source: .googleCalendar)
-        DashboardStore.connectedSources = [.appleHealth, .googleCalendar]
+        let calendar = MockDashboardConnector(source: .calendar)
+        DashboardStore.connectedSources = [.appleHealth, .calendar]
         DashboardStore.replaceMetrics([health.metric], for: .appleHealth, fetchedAt: .now.addingTimeInterval(-3600))
         let manager = ConnectorManager(connectors: [health, calendar], directOuraConnector: MockDashboardConnector(source: .oura))
         // A widget timeline fetches the calendar after the app was suspended.
-        DashboardStore.replaceMetrics([calendar.metric], for: .googleCalendar, fetchedAt: .now.addingTimeInterval(-60))
+        DashboardStore.replaceMetrics([calendar.metric], for: .calendar, fetchedAt: .now.addingTimeInterval(-60))
         await manager.refreshStaleSources(olderThan: 600)
         XCTAssertEqual(health.refreshCount, 1)
         XCTAssertEqual(calendar.refreshCount, 0)
-        XCTAssertEqual(Set(manager.metrics.map(\.source)), [.appleHealth, .googleCalendar])
+        XCTAssertEqual(Set(manager.metrics.map(\.source)), [.appleHealth, .calendar])
     }
 
     @MainActor
@@ -105,15 +105,15 @@ final class ConnectorManagerTests: XCTestCase {
     func testCalendarTitleOptOutRejectsRefreshStartedUnderPreviousPreferences() async {
         CalendarPreferences.selectedCalendarIDs = ["personal"]
         CalendarPreferences.showEventTitles = true
-        let calendar = MockDashboardConnector(source: .googleCalendar)
+        let calendar = MockDashboardConnector(source: .calendar)
         calendar.customMetric = privateCalendarMetric()
         calendar.holdRefresh = true
-        DashboardStore.connectedSources = [.googleCalendar]
-        DashboardStore.replaceMetrics([calendar.metric], for: .googleCalendar)
+        DashboardStore.connectedSources = [.calendar]
+        DashboardStore.replaceMetrics([calendar.metric], for: .calendar)
         let started = expectation(description: "Calendar refresh started")
         calendar.onRefresh = { started.fulfill() }
         let manager = ConnectorManager(connectors: [calendar], directOuraConnector: MockDashboardConnector(source: .oura))
-        let refreshing = Task { await manager.refresh(.googleCalendar) }
+        let refreshing = Task { await manager.refresh(.calendar) }
         await fulfillment(of: [started], timeout: 2)
 
         CalendarPreferences.showEventTitles = false
@@ -123,21 +123,21 @@ final class ConnectorManagerTests: XCTestCase {
 
         XCTAssertTrue(manager.metrics.isEmpty, "An old fetch must not restore the opted-out event title")
         XCTAssertTrue(DashboardStore.metrics.isEmpty)
-        XCTAssertNil(DashboardStore.updatedAt(for: .googleCalendar))
-        XCTAssertEqual(manager.activity(for: .googleCalendar), .idle)
+        XCTAssertNil(DashboardStore.updatedAt(for: .calendar))
+        XCTAssertEqual(manager.activity(for: .calendar), .idle)
     }
 
     @MainActor
     func testCalendarSelectionChangeRejectsPendingAuthorizationBeforeFetchingTitle() async {
         CalendarPreferences.selectedCalendarIDs = ["personal"]
         CalendarPreferences.showEventTitles = true
-        let calendar = MockDashboardConnector(source: .googleCalendar)
+        let calendar = MockDashboardConnector(source: .calendar)
         calendar.customMetric = privateCalendarMetric()
         calendar.holdAuthorization = true
         let started = expectation(description: "Calendar authorization started")
         calendar.onAuthorize = { started.fulfill() }
         let manager = ConnectorManager(connectors: [calendar], directOuraConnector: MockDashboardConnector(source: .oura))
-        let connecting = Task { await manager.connect(.googleCalendar) }
+        let connecting = Task { await manager.connect(.calendar) }
         await fulfillment(of: [started], timeout: 2)
 
         CalendarPreferences.selectedCalendarIDs = []
@@ -146,21 +146,21 @@ final class ConnectorManagerTests: XCTestCase {
 
         XCTAssertEqual(calendar.authorizeCount, 1)
         XCTAssertEqual(calendar.refreshCount, 0)
-        XCTAssertFalse(manager.connectedSources.contains(.googleCalendar))
+        XCTAssertFalse(manager.connectedSources.contains(.calendar))
         XCTAssertTrue(manager.metrics.isEmpty)
         XCTAssertTrue(DashboardStore.metrics.isEmpty)
-        XCTAssertEqual(manager.activity(for: .googleCalendar), .idle)
+        XCTAssertEqual(manager.activity(for: .calendar), .idle)
     }
 
     @MainActor
     func testCalendarPreferenceChangeSynchronouslyClearsPublishedPrivateMetrics() {
         CalendarPreferences.selectedCalendarIDs = ["personal"]
         CalendarPreferences.showEventTitles = true
-        let calendar = MockDashboardConnector(source: .googleCalendar)
+        let calendar = MockDashboardConnector(source: .calendar)
         calendar.customMetric = privateCalendarMetric()
         let health = MockDashboardConnector(source: .appleHealth)
-        DashboardStore.connectedSources = [.googleCalendar, .appleHealth]
-        DashboardStore.replaceMetrics([calendar.metric], for: .googleCalendar)
+        DashboardStore.connectedSources = [.calendar, .appleHealth]
+        DashboardStore.replaceMetrics([calendar.metric], for: .calendar)
         DashboardStore.replaceMetrics([health.metric], for: .appleHealth)
         let manager = ConnectorManager(connectors: [calendar, health], directOuraConnector: MockDashboardConnector(source: .oura))
         XCTAssertTrue(manager.metrics.contains { $0.privateValue != nil })
@@ -171,7 +171,7 @@ final class ConnectorManagerTests: XCTestCase {
         XCTAssertEqual(manager.metrics, [health.metric])
         XCTAssertEqual(DashboardStore.metrics, [health.metric])
         XCTAssertEqual(calendar.refreshCount, 0, "The private cache must disappear before awaiting another fetch")
-        XCTAssertEqual(manager.activity(for: .googleCalendar), .idle)
+        XCTAssertEqual(manager.activity(for: .calendar), .idle)
     }
 
     @MainActor
@@ -320,7 +320,7 @@ final class ConnectorManagerTests: XCTestCase {
     }
 
     private func privateCalendarMetric() -> DashboardMetric {
-        DashboardMetric(id: "nextEvent", source: .googleCalendar, title: "Up next", value: "Busy",
+        DashboardMetric(id: "nextEvent", source: .calendar, title: "Up next", value: "Busy",
                         detail: "10:30", symbol: "calendar", tint: "blue", privateValue: "Private medical appointment")
     }
 }
@@ -343,7 +343,7 @@ private final class MockDashboardConnector: DashboardConnector {
 
     init(source: DataSource) { self.source = source }
     var metric: DashboardMetric {
-        customMetric ?? DashboardMetric(id: source == .googleCalendar ? "nextEvent" : "steps", source: source,
+        customMetric ?? DashboardMetric(id: source == .calendar ? "nextEvent" : "steps", source: source,
                                         title: "Test", value: "42", detail: "Live", symbol: "circle", tint: "blue")
     }
     func authorize() async throws {
