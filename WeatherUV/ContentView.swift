@@ -384,7 +384,7 @@ private struct CalendarSettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Link("Open Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
                     } else if !isLoading && calendarStore.calendars.isEmpty {
-                        Text("No calendars found. Add a calendar account in iOS Settings, then refresh this list.")
+                        Text("No calendars found.")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(calendarStore.calendars) { calendar in
@@ -408,6 +408,13 @@ private struct CalendarSettingsView: View {
                         !selectedCalendarIDs.subtracting(Set(calendarStore.calendars.map(\.id))).isEmpty {
                         Text("Some selected calendars are no longer available. Only selected calendars in this list can contribute events.")
                             .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                if calendarStore.errorMessage == nil {
+                    Section("Missing a calendar?") {
+                        Text("Readout shows every calendar account on this iPhone: Google, Outlook, Exchange, iCloud, and others. To add one, open the Settings app, find Calendar (under Apps), then choose Calendar Accounts → Add Account. No separate sign-in is needed here; this list updates when you come back.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        Link("Open Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
                     }
                 }
                 Section("Event title privacy") {
