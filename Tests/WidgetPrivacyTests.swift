@@ -84,7 +84,9 @@ final class WidgetPrivacyTests: XCTestCase {
         let choices: [(WidgetMetricChoice, String)] = [
             (.automatic, ""), (.uv, "uv"), (.temperature, "temperature"), (.rain, "rain"), (.tomorrow, "tomorrow"),
             (.readiness, "readiness"), (.sleep, "sleep"), (.steps, "steps"), (.heart, "heart"),
-            (.heartRate, "heartRate"), (.hrv, "hrv"), (.walkingHeartRate, "walkingHeartRate"), (.nextEvent, "nextEvent")
+            (.heartRate, "heartRate"), (.hrv, "hrv"), (.walkingHeartRate, "walkingHeartRate"), (.nextEvent, "nextEvent"),
+            (.feelsLike, "feelsLike"), (.wind, "wind"), (.humidity, "humidity"), (.sun, "sun"), (.airQuality, "airQuality"),
+            (.activeEnergy, "activeEnergy"), (.exercise, "exercise"), (.distance, "distance"), (.workout, "workout")
         ]
         for (choice, expectedID) in choices {
             XCTAssertEqual(choice.metricID, expectedID)

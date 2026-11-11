@@ -92,7 +92,15 @@ struct TileView: View {
             SyncTileView(tile: tile, context: context, size: size, isTrailing: isTrailing)
         } else if let descriptor = MetricCatalog.descriptor(for: tile.metricID) {
             if metric != nil || context.showsUnavailable || context.connectedSources.contains(descriptor.source) {
-                MetricTileView(tile: tile, descriptor: descriptor, metric: metric, context: context, size: size)
+                let content = MetricTileView(tile: tile, descriptor: descriptor, metric: metric, context: context, size: size)
+                // Medium and large widgets open the tile's own app; small
+                // widgets have one tap target and open Readout.
+                if context.isInteractive, let url = TileLink.url(for: tile.metricID) {
+                    Link(destination: url) { content }
+                        .buttonStyle(.plain)
+                } else {
+                    content
+                }
             } else {
                 // A tile for a source that is not connected keeps its space empty.
                 Color.clear
@@ -123,6 +131,8 @@ private struct MetricTileView: View {
         Group {
             if descriptor.id == "nextEvent" {
                 event
+            } else if descriptor.id == "agenda" {
+                agenda
             } else if tile.height >= 2 && tile.width >= 2 {
                 detailed
             } else if tile.height >= 2 {
@@ -254,6 +264,37 @@ private struct MetricTileView: View {
         }
     }
 
+    /// One event per grid row: when it starts, then its title. A one-column
+    /// tile shows only the times.
+    private var agenda: some View {
+        let rowHeight = size.height / CGFloat(max(1, tile.height))
+        let fontSize = clamp(rowHeight * 0.5, 10 * scale, 14 * scale)
+        let rows = Array((metric?.items ?? []).prefix(max(1, tile.height)))
+        return VStack(alignment: .leading, spacing: 0) {
+            if rows.isEmpty {
+                HStack(spacing: 4 * scale) {
+                    if showsIndicator { indicator(size: fontSize, prefersText: false) }
+                    Text(metric == nil ? "—" : tile.width >= 2 ? "No upcoming events" : "None")
+                        .font(.system(size: fontSize))
+                        .foregroundStyle(appearance.secondaryInk)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
+                .frame(height: rowHeight)
+            } else {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, item in
+                    (Text(EventTiming.agendaText(item, now: context.now)).fontWeight(.semibold)
+                        + Text(tile.width >= 2 ? " " + (item.title ?? "Busy") : ""))
+                        .font(.system(size: fontSize))
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: rowHeight)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
     /// Weather symbols identify most tiles. UV and tomorrow use short text
     /// labels in small tiles, where a sun or cloud alone would be ambiguous.
     @ViewBuilder
@@ -283,6 +324,12 @@ private struct MetricTileView: View {
         guard let metric else { return "\(descriptor.name), no data" }
         if descriptor.id == "nextEvent", let start = metric.observedAt {
             return "Next event, \(metric.value), \(EventTiming.startText(start, now: context.now)), \(EventTiming.relativeText(start: start, end: metric.endsAt, now: context.now))"
+        }
+        if descriptor.id == "agenda", let items = metric.items, !items.isEmpty {
+            let lines = items.prefix(max(1, tile.height)).map {
+                "\(EventTiming.agendaText($0, now: context.now)) \($0.title ?? "Busy")"
+            }
+            return (["Agenda"] + lines).joined(separator: ", ")
         }
         return [title, value, detail].filter { !$0.isEmpty }.joined(separator: ", ")
     }

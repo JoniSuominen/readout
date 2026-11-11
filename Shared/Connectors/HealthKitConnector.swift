@@ -24,8 +24,10 @@ final class HealthKitConnector: DashboardConnector {
 
         async let steps = todaySteps()
         async let heart = heartMetrics()
-        let results = try await (steps, heart)
-        return [results.0] + results.1
+        async let totals = dailyTotals()
+        async let workout = latestWorkout()
+        let results = try await (steps, heart, totals, workout)
+        return [results.0] + results.1 + results.2 + [results.3]
     }
 
     func disconnect() async -> DisconnectResult {
@@ -51,7 +53,90 @@ final class HealthKitConnector: DashboardConnector {
                 types.insert(type)
             }
         }
+        for total in DailyTotal.all {
+            if let type = HKObjectType.quantityType(forIdentifier: total.identifier) {
+                types.insert(type)
+            }
+        }
+        types.insert(HKObjectType.workoutType())
         return types
+    }
+
+    /// Activity summed since midnight. Denied or unrecorded types show "—".
+    private struct DailyTotal {
+        let id: String
+        let title: String
+        let identifier: HKQuantityTypeIdentifier
+        let unit: HKUnit
+        let symbol: String
+        let tint: String
+        let target: Double?
+        let emptyDetail: String
+        let value: (Double) -> String
+        let detail: String
+
+        static let all: [DailyTotal] = [
+            .init(id: "activeEnergy", title: "Active energy", identifier: .activeEnergyBurned, unit: .kilocalorie(),
+                  symbol: "flame.fill", tint: "red", target: nil, emptyDetail: "No active energy recorded today",
+                  value: { $0.formatted(.number.precision(.fractionLength(0))) }, detail: "kcal today"),
+            .init(id: "exercise", title: "Exercise", identifier: .appleExerciseTime, unit: .minute(),
+                  symbol: "figure.run", tint: "green", target: 30, emptyDetail: "No exercise minutes recorded today",
+                  value: { $0.formatted(.number.precision(.fractionLength(0))) }, detail: "min today · goal 30"),
+            .init(id: "distance", title: "Distance", identifier: .distanceWalkingRunning, unit: .meter(),
+                  symbol: "figure.walk.motion", tint: "mint", target: nil, emptyDetail: "No distance recorded today",
+                  value: { HealthFormat.distance(meters: $0) }, detail: "Walking and running today")
+        ]
+    }
+
+    private func dailyTotals() async throws -> [DashboardMetric] {
+        try await withThrowingTaskGroup(of: (Int, DashboardMetric).self) { group in
+            for (index, total) in DailyTotal.all.enumerated() {
+                guard let type = HKQuantityType.quantityType(forIdentifier: total.identifier) else { continue }
+                group.addTask { (index, try await self.dailyTotal(total, type: type)) }
+            }
+            var metrics: [(Int, DashboardMetric)] = []
+            for try await metric in group { metrics.append(metric) }
+            return metrics.sorted { $0.0 < $1.0 }.map(\.1)
+        }
+    }
+
+    private func dailyTotal(_ total: DailyTotal, type: HKQuantityType) async throws -> DashboardMetric {
+        let start = Calendar.current.startOfDay(for: .now)
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: .now)
+        let statistics = try await statistics(for: type, predicate: predicate, options: [.cumulativeSum, .separateBySource])
+        let sum = statistics?.sumQuantity()?.doubleValue(for: total.unit)
+        return DashboardMetric(
+            id: total.id,
+            source: .appleHealth,
+            title: total.title,
+            value: sum.map(total.value) ?? "—",
+            detail: sum == nil ? total.emptyDetail : total.detail,
+            symbol: total.symbol,
+            tint: total.tint,
+            numericValue: sum,
+            targetValue: total.target,
+            observedAt: sum == nil ? nil : .now,
+            // Today's total must not be shown as tomorrow's.
+            expiresAt: Calendar.current.date(byAdding: .day, value: 1, to: start),
+            origin: Self.originNames(statistics?.sources)
+        )
+    }
+
+    private func latestWorkout() async throws -> DashboardMetric {
+        let workout = try await latestSample(for: HKObjectType.workoutType()) as? HKWorkout
+        return DashboardMetric(
+            id: "workout",
+            source: .appleHealth,
+            title: "Last workout",
+            value: workout.map { HealthFormat.duration(seconds: $0.duration) } ?? "—",
+            detail: workout.map { "\(HealthFormat.workoutName($0.workoutActivityType)) · \(Self.sampleTime($0.endDate))" }
+                ?? "No workout found",
+            symbol: "dumbbell.fill",
+            tint: "green",
+            numericValue: workout?.duration,
+            observedAt: workout?.endDate,
+            origin: workout?.sourceRevision.source.name
+        )
     }
 
     /// Heart readings a tile can show; each is its own metric so every tile
@@ -157,7 +242,12 @@ final class HealthKitConnector: DashboardConnector {
                 options: options
             ) { _, result, error in
                 if let error {
-                    continuation.resume(throwing: error)
+                    // Nothing recorded today is an empty total, not a failure.
+                    if (error as? HKError)?.code == .errorNoData {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
                 } else {
                     continuation.resume(returning: result)
                 }
@@ -167,6 +257,10 @@ final class HealthKitConnector: DashboardConnector {
     }
 
     private func latestQuantitySample(for type: HKQuantityType) async throws -> HKQuantitySample? {
+        try await latestSample(for: type) as? HKQuantitySample
+    }
+
+    private func latestSample(for type: HKSampleType) async throws -> HKSample? {
         try await withCheckedThrowingContinuation { continuation in
             let query = HKSampleQuery(
                 sampleType: type,
@@ -177,10 +271,50 @@ final class HealthKitConnector: DashboardConnector {
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: samples?.first as? HKQuantitySample)
+                    continuation.resume(returning: samples?.first)
                 }
             }
             healthStore.execute(query)
+        }
+    }
+}
+
+enum HealthFormat {
+    /// "5.2 km" or "3.2 mi", following the iPhone's region.
+    static func distance(meters: Double, locale: Locale = .current) -> String {
+        Measurement(value: max(0, meters), unit: UnitLength.meters).formatted(
+            .measurement(width: .abbreviated, usage: .road, numberFormatStyle: .number.precision(.fractionLength(1)))
+                .locale(locale)
+        )
+    }
+
+    /// "45m" or "1h 5m".
+    static func duration(seconds: TimeInterval) -> String {
+        let minutes = Int((max(0, seconds) / 60).rounded())
+        return minutes < 60 ? "\(minutes)m" : "\(minutes / 60)h \(minutes % 60)m"
+    }
+
+    static func workoutName(_ type: HKWorkoutActivityType) -> String {
+        switch type {
+        case .running: return "Running"
+        case .walking: return "Walking"
+        case .hiking: return "Hiking"
+        case .cycling: return "Cycling"
+        case .swimming: return "Swimming"
+        case .yoga: return "Yoga"
+        case .traditionalStrengthTraining, .functionalStrengthTraining: return "Strength"
+        case .highIntensityIntervalTraining: return "HIIT"
+        case .rowing: return "Rowing"
+        case .elliptical: return "Elliptical"
+        case .crossCountrySkiing: return "Skiing"
+        case .downhillSkiing: return "Downhill skiing"
+        case .pilates: return "Pilates"
+        case .cardioDance, .socialDance: return "Dance"
+        case .coreTraining: return "Core"
+        case .soccer: return "Football"
+        case .tennis: return "Tennis"
+        case .golf: return "Golf"
+        default: return "Workout"
         }
     }
 }

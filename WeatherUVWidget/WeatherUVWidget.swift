@@ -13,7 +13,7 @@ struct WeatherUVWidget: Widget {
         }
         .configurationDisplayName("Dashboard")
         .description("Weather, health, and your next event in one layout you design in the app.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }
 

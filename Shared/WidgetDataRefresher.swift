@@ -4,9 +4,8 @@ import EventKit
 import WidgetKit
 
 /// Refreshes sources that can be read without opening the app: weather,
-/// Apple Health, Oura sleep shared with Apple Health, and calendars. Direct
-/// Oura account data needs the app's Keychain credentials and refreshes when
-/// the app runs.
+/// Apple Health, calendars, and Oura. An Oura account is read with the access
+/// token the app saved; only the app signs in or renews that token.
 @MainActor
 enum WidgetDataRefresher {
     /// Timeline reloads skip sources fetched more recently than this.
@@ -84,7 +83,7 @@ enum WidgetDataRefresher {
         case .appleHealth:
             return HealthKitConnector()
         case .oura:
-            return OuraConnectionMethod.stored == .appleHealth ? OuraHealthConnector() : nil
+            return OuraConnectionMethod.stored == .appleHealth ? OuraHealthConnector() : OuraAPIConnector.widgetReader()
         case .calendar:
             // Without full access here, leave the snapshot alone; the app clears
             // it when permission is revoked.

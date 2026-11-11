@@ -83,6 +83,49 @@ enum CalendarSnapshotBuilder {
             .min { $0.startsAt < $1.startsAt }
     }
 
+    static let agendaLimit = 5
+
+    /// All-day events in progress come first, then timed events by start.
+    /// Titles are kept only when the user allows them.
+    static func agenda(
+        in events: [CalendarEventSummary],
+        selectedCalendarIDs: Set<String>,
+        now: Date,
+        showEventTitles: Bool
+    ) -> [AgendaItem] {
+        let horizon = Calendar.current.date(byAdding: .day, value: 7, to: now) ?? now
+        let upcoming = events.filter {
+            selectedCalendarIDs.contains($0.calendarID) && $0.endsAt > now && $0.startsAt < horizon
+        }
+        let allDay = upcoming.filter { $0.isAllDay && $0.startsAt <= now }.sorted { $0.endsAt < $1.endsAt }
+        let timed = upcoming.filter { !$0.isAllDay }.sorted { $0.startsAt < $1.startsAt }
+        return (allDay + timed).prefix(agendaLimit).map { event in
+            let title = event.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return AgendaItem(
+                startsAt: event.startsAt,
+                endsAt: event.endsAt,
+                isAllDay: event.isAllDay,
+                title: showEventTitles && title?.isEmpty == false ? title : nil
+            )
+        }
+    }
+
+    static func agendaMetric(for items: [AgendaItem], emptyDetail: String = "Next 7 days") -> DashboardMetric {
+        DashboardMetric(
+            id: "agenda",
+            source: .calendar,
+            title: "Agenda",
+            value: items.isEmpty ? "No upcoming events" : "Busy",
+            detail: items.isEmpty ? emptyDetail : "",
+            symbol: "list.bullet",
+            tint: "blue",
+            observedAt: items.first { !$0.isAllDay }?.startsAt,
+            // Refetch as soon as any listed event ends.
+            expiresAt: items.map(\.endsAt).min(),
+            items: items
+        )
+    }
+
     static func metric(
         for event: CalendarEventSummary?,
         showEventTitles: Bool,

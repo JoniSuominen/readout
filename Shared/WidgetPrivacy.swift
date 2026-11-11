@@ -27,7 +27,7 @@ enum WidgetPrivacy {
 
     private static func render(_ metric: DashboardMetric, mode: WidgetPrivacyMode) -> DashboardMetric {
         if metric.source == .calendar {
-            return renderCalendar(metric, mode: mode)
+            return metric.id == "agenda" ? renderAgenda(metric, mode: mode) : renderCalendar(metric, mode: mode)
         }
         if metric.source == .weather {
             return DashboardMetric(
@@ -106,6 +106,30 @@ enum WidgetPrivacy {
         )
     }
 
+    /// Times stay; titles survive only in widgets set to show values.
+    private static func renderAgenda(_ metric: DashboardMetric, mode: WidgetPrivacyMode) -> DashboardMetric {
+        let items = (metric.items ?? []).map { item in
+            AgendaItem(
+                startsAt: item.startsAt,
+                endsAt: item.endsAt,
+                isAllDay: item.isAllDay,
+                title: mode == .showValues ? item.title : nil
+            )
+        }
+        return DashboardMetric(
+            id: metric.id,
+            source: metric.source,
+            title: "Agenda",
+            value: items.isEmpty ? "No upcoming events" : "Busy",
+            detail: items.isEmpty ? "Selected calendars" : "",
+            symbol: "list.bullet",
+            tint: "blue",
+            observedAt: items.first { !$0.isAllDay }?.startsAt,
+            expiresAt: metric.expiresAt,
+            items: items
+        )
+    }
+
     private static func healthTitle(for id: String) -> String {
         switch id {
         case "readiness": return "Readiness"
@@ -115,6 +139,10 @@ enum WidgetPrivacy {
         case "heartRate": return "Heart rate"
         case "hrv": return "HRV"
         case "walkingHeartRate": return "Walking heart rate"
+        case "activeEnergy": return "Active energy"
+        case "exercise": return "Exercise minutes"
+        case "distance": return "Distance"
+        case "workout": return "Last workout"
         default: return "Health"
         }
     }

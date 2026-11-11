@@ -40,7 +40,7 @@
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Reads upcoming events from the calendars you select to show your next event in the app and widgets.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Reads steps, heart rate, resting and walking heart rate, heart rate variability, and sleep to show them in the app and widgets.</string>
+	<string>Reads steps, activity, workouts, heart rate, resting and walking heart rate, heart rate variability, and sleep to show them in the app and widgets.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your approximate location is used to get the local weather and UV forecast.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

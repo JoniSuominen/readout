@@ -34,11 +34,7 @@ final class CalendarConnector: DashboardConnector {
 
         let selectedIDs = CalendarPreferences.selectedCalendarIDs
         guard !selectedIDs.isEmpty else {
-            return [CalendarSnapshotBuilder.metric(
-                for: nil,
-                showEventTitles: false,
-                emptyDetail: "Choose calendars in Sources"
-            )]
+            return Self.emptyMetrics("Choose calendars in Sources")
         }
         let availableCalendars = eventStore.calendars(for: .event)
         let availableSelectedIDs = CalendarSnapshotBuilder.selectedIDs(
@@ -47,11 +43,7 @@ final class CalendarConnector: DashboardConnector {
         )
         let calendars = availableCalendars.filter { availableSelectedIDs.contains($0.calendarIdentifier) }
         guard !calendars.isEmpty else {
-            return [CalendarSnapshotBuilder.metric(
-                for: nil,
-                showEventTitles: false,
-                emptyDetail: "Selected calendars are unavailable"
-            )]
+            return Self.emptyMetrics("Selected calendars are unavailable")
         }
 
         let now = Date.now
@@ -72,10 +64,23 @@ final class CalendarConnector: DashboardConnector {
             selectedCalendarIDs: selectedIDs,
             now: now
         )
-        return [CalendarSnapshotBuilder.metric(
-            for: nextEvent,
+        let agenda = CalendarSnapshotBuilder.agenda(
+            in: events,
+            selectedCalendarIDs: selectedIDs,
+            now: now,
             showEventTitles: CalendarPreferences.showEventTitles
-        )]
+        )
+        return [
+            CalendarSnapshotBuilder.metric(for: nextEvent, showEventTitles: CalendarPreferences.showEventTitles),
+            CalendarSnapshotBuilder.agendaMetric(for: agenda)
+        ]
+    }
+
+    private static func emptyMetrics(_ detail: String) -> [DashboardMetric] {
+        [
+            CalendarSnapshotBuilder.metric(for: nil, showEventTitles: false, emptyDetail: detail),
+            CalendarSnapshotBuilder.agendaMetric(for: [], emptyDetail: detail)
+        ]
     }
 
     func disconnect() async -> DisconnectResult {

@@ -7,6 +7,7 @@ struct WeatherUVAccessoryWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: LockWidgetIntent.self, provider: Provider<LockWidgetIntent>()) { entry in
             AccessoryView(entry: entry)
+                .widgetURL(entry.orderedMetrics.first.flatMap { TileLink.url(for: $0.id) })
                 .containerBackground(for: .widget) { Color.clear }
         }
         .configurationDisplayName("Glance")

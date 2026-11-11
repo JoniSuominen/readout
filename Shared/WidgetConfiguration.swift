@@ -10,6 +10,11 @@ extension WidgetMetricChoice: AppEnum {
             .temperature: "Temperature",
             .rain: "Rain today",
             .tomorrow: "Tomorrow",
+            .feelsLike: "Feels like",
+            .wind: "Wind",
+            .humidity: "Humidity",
+            .sun: "Sunrise and sunset",
+            .airQuality: "Air quality",
             .readiness: "Readiness",
             .sleep: "Sleep",
             .steps: "Steps",
@@ -17,6 +22,10 @@ extension WidgetMetricChoice: AppEnum {
             .heartRate: "Heart rate",
             .hrv: "HRV",
             .walkingHeartRate: "Walking heart rate",
+            .activeEnergy: "Active energy",
+            .exercise: "Exercise minutes",
+            .distance: "Distance",
+            .workout: "Last workout",
             .nextEvent: "Next event"
         ]
     }

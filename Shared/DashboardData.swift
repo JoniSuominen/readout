@@ -26,6 +26,15 @@ enum DataSource: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// One line of the agenda tile. The title is kept only when the user allows
+/// event titles; widget privacy projection removes it for discreet widgets.
+struct AgendaItem: Codable, Hashable {
+    let startsAt: Date
+    let endsAt: Date
+    let isAllDay: Bool
+    let title: String?
+}
+
 struct DashboardMetric: Codable, Identifiable, Hashable {
     let id: String
     let source: DataSource
@@ -52,6 +61,8 @@ struct DashboardMetric: Codable, Identifiable, Hashable {
     /// The app or device behind the value, such as "Oura" or a watch name.
     /// App only: the widget privacy projection drops it.
     let origin: String?
+    /// Upcoming events for the agenda tile, soonest first.
+    let items: [AgendaItem]?
 
     var originLabel: String {
         origin ?? (source == .weather ? "Open-Meteo" : source.displayName)
@@ -78,7 +89,8 @@ struct DashboardMetric: Codable, Identifiable, Hashable {
         privateValue: String? = nil,
         endsAt: Date? = nil,
         expiresAt: Date? = nil,
-        origin: String? = nil
+        origin: String? = nil,
+        items: [AgendaItem]? = nil
     ) {
         self.id = id
         self.source = source
@@ -94,6 +106,7 @@ struct DashboardMetric: Codable, Identifiable, Hashable {
         self.endsAt = endsAt
         self.expiresAt = expiresAt
         self.origin = origin
+        self.items = items
     }
 
     /// A normalized, finite goal or score. Metrics without a meaningful target
@@ -111,6 +124,11 @@ struct DashboardMetric: Codable, Identifiable, Hashable {
         .init(id: "uv", source: .weather, title: "UV index", value: "5", detail: "Moderate · peak 6 at 13:00", symbol: "sun.max.fill", tint: "yellow", numericValue: 5, targetValue: 11),
         .init(id: "rain", source: .weather, title: "Rain today", value: "2.4 mm", detail: "60% · most likely 15:00", symbol: "drop.fill", tint: "blue", numericValue: 2.4),
         .init(id: "tomorrow", source: .weather, title: "Tomorrow", value: "12°", detail: "Rain · 15° / 8°", symbol: "cloud.rain.fill", tint: "teal", numericValue: 12),
+        .init(id: "feelsLike", source: .weather, title: "Feels like", value: "12°", detail: "Actual 14°", symbol: "thermometer.medium", tint: "orange", numericValue: 12),
+        .init(id: "wind", source: .weather, title: "Wind", value: "5 m/s", detail: "from NW · gusts 9 m/s", symbol: "wind", tint: "teal", numericValue: 5),
+        .init(id: "humidity", source: .weather, title: "Humidity", value: "62%", detail: "Relative humidity", symbol: "humidity.fill", tint: "blue", numericValue: 62, targetValue: 100),
+        .init(id: "sun", source: .weather, title: "Sunset", value: "21:48", detail: "Sunrise 05:12", symbol: "sunset.fill", tint: "yellow"),
+        .init(id: "airQuality", source: .weather, title: "Air quality", value: "18", detail: "Good · PM2.5 4", symbol: "aqi.medium", tint: "green", numericValue: 18, targetValue: 100),
         .init(id: "readiness", source: .oura, title: "Readiness", value: "86", detail: "Optimal", symbol: "sparkles", tint: "violet", numericValue: 86, targetValue: 100),
         .init(id: "sleep", source: .oura, title: "Sleep", value: "7h 42m", detail: "Score 91", symbol: "moon.stars.fill", tint: "indigo"),
         .init(id: "steps", source: .appleHealth, title: "Steps", value: "8,420", detail: "84% of goal", symbol: "figure.walk", tint: "mint", numericValue: 8420, targetValue: 10000),
@@ -118,8 +136,18 @@ struct DashboardMetric: Codable, Identifiable, Hashable {
         .init(id: "heartRate", source: .appleHealth, title: "Heart rate", value: "71", detail: "bpm · 14:05", symbol: "heart.fill", tint: "pink"),
         .init(id: "hrv", source: .appleHealth, title: "HRV", value: "48", detail: "ms · 07:12", symbol: "heart.fill", tint: "pink"),
         .init(id: "walkingHeartRate", source: .appleHealth, title: "Walking heart rate", value: "98", detail: "bpm · 31 Oct", symbol: "heart.fill", tint: "pink"),
+        .init(id: "activeEnergy", source: .appleHealth, title: "Active energy", value: "420", detail: "kcal today", symbol: "flame.fill", tint: "red", numericValue: 420),
+        .init(id: "exercise", source: .appleHealth, title: "Exercise", value: "24", detail: "min today · goal 30", symbol: "figure.run", tint: "green", numericValue: 24, targetValue: 30),
+        .init(id: "distance", source: .appleHealth, title: "Distance", value: "5.2 km", detail: "Walking and running today", symbol: "figure.walk.motion", tint: "mint", numericValue: 5200),
+        .init(id: "workout", source: .appleHealth, title: "Last workout", value: "45m", detail: "Running · 07:30", symbol: "dumbbell.fill", tint: "green", numericValue: 2700),
         .init(id: "nextEvent", source: .calendar, title: "Up next", value: "Busy", detail: "", symbol: "calendar", tint: "blue",
-              observedAt: Date.now.addingTimeInterval(24 * 60), privateValue: "Design sync", endsAt: Date.now.addingTimeInterval(54 * 60))
+              observedAt: Date.now.addingTimeInterval(24 * 60), privateValue: "Design sync", endsAt: Date.now.addingTimeInterval(54 * 60)),
+        .init(id: "agenda", source: .calendar, title: "Agenda", value: "Busy", detail: "", symbol: "list.bullet", tint: "blue",
+              observedAt: Date.now.addingTimeInterval(24 * 60), items: [
+                AgendaItem(startsAt: Date.now.addingTimeInterval(24 * 60), endsAt: Date.now.addingTimeInterval(54 * 60), isAllDay: false, title: "Design sync"),
+                AgendaItem(startsAt: Date.now.addingTimeInterval(150 * 60), endsAt: Date.now.addingTimeInterval(210 * 60), isAllDay: false, title: "Lunch"),
+                AgendaItem(startsAt: Date.now.addingTimeInterval(300 * 60), endsAt: Date.now.addingTimeInterval(330 * 60), isAllDay: false, title: "Dentist")
+              ])
     ]
 }
 
@@ -213,6 +241,7 @@ enum DashboardStore {
         defaults.removeObject(forKey: sourceUpdatesKey)
         defaults.removeObject(forKey: sourceErrorsKey)
         CalendarPreferences.reset()
+        UnitPreferences.reset()
         WidgetDesignStore.reset()
         WeatherLocationStore.clear()
         defaults.set(1, forKey: privacyVersionKey)

@@ -64,6 +64,53 @@ enum EventTiming {
         if minutes > 0 && minutes < 60 { return "in \(minutes)m" }
         return startText(start, now: now)
     }
+
+    /// The time column of an agenda line: "All day", "Now", "in 25m", "14:30".
+    static func agendaText(_ item: AgendaItem, now: Date) -> String {
+        item.isAllDay ? "All day" : compactText(start: item.startsAt, end: item.endsAt, now: now)
+    }
+}
+
+/// Where a tapped widget tile leads. The widget link carries only the metric
+/// id; the app turns it into the app that owns the data.
+enum TileLink {
+    static let scheme = "com.jonisuominen.readout"
+    static let host = "open"
+
+    static func url(for metricID: String) -> URL? {
+        guard MetricCatalog.descriptor(for: metricID) != nil else { return nil }
+        return URL(string: "\(scheme)://\(host)/\(metricID)")
+    }
+
+    /// The metric a widget link names, or nil for any other URL.
+    static func metricID(from url: URL) -> String? {
+        guard url.scheme == scheme, url.host == host else { return nil }
+        let parts = url.pathComponents.filter { $0 != "/" }
+        guard parts.count == 1, MetricCatalog.descriptor(for: parts[0]) != nil else { return nil }
+        return parts[0]
+    }
+
+    /// Calendar opens on the event's day and Apple Health opens for health
+    /// tiles. Nil keeps the person in Readout.
+    static func externalURL(
+        for metricID: String,
+        metrics: [DashboardMetric],
+        ouraMethod: OuraConnectionMethod,
+        now: Date = .now
+    ) -> URL? {
+        guard let descriptor = MetricCatalog.descriptor(for: metricID) else { return nil }
+        switch descriptor.source {
+        case .calendar:
+            let day = metrics.first { $0.id == metricID }?.observedAt ?? now
+            return URL(string: "calshow:\(Int(day.timeIntervalSinceReferenceDate))")
+        case .appleHealth:
+            return URL(string: "x-apple-health://")
+        case .oura:
+            return ouraMethod == .appleHealth ? URL(string: "x-apple-health://") : nil
+        case .weather:
+            return nil
+        }
+    }
 }
 
 /// WHO UV index categories.
@@ -143,6 +190,116 @@ enum WeatherCode {
     }
 }
 
+enum TemperatureUnit: String, CaseIterable, Identifiable {
+    case automatic, celsius, fahrenheit
+
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .automatic: return "Automatic"
+        case .celsius: return "°C"
+        case .fahrenheit: return "°F"
+        }
+    }
+}
+
+enum RainUnit: String, CaseIterable, Identifiable {
+    case automatic, millimeters, inches
+
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .automatic: return "Automatic"
+        case .millimeters: return "mm"
+        case .inches: return "in"
+        }
+    }
+}
+
+enum WindUnit: String, CaseIterable, Identifiable {
+    case automatic, metersPerSecond, kilometersPerHour, milesPerHour
+
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .automatic: return "Automatic"
+        case .metersPerSecond: return "m/s"
+        case .kilometersPerHour: return "km/h"
+        case .milesPerHour: return "mph"
+        }
+    }
+
+    /// Regions whose forecasts give wind in m/s; elsewhere it is km/h, or mph
+    /// where miles are used.
+    static let metersPerSecondRegions: Set<String> = ["CN", "DK", "FI", "JP", "KR", "NO", "PL", "RU", "SE"]
+
+    func resolved(for locale: Locale) -> WindUnit {
+        guard self == .automatic else { return self }
+        if locale.measurementSystem == .us || locale.measurementSystem == .uk { return .milesPerHour }
+        if let region = locale.region?.identifier, Self.metersPerSecondRegions.contains(region) {
+            return .metersPerSecond
+        }
+        return .kilometersPerHour
+    }
+}
+
+/// Unit choices live in the shared app group: widgets format weather too.
+/// Automatic follows the iPhone's region settings.
+enum UnitPreferences {
+    static let temperatureKey = "units.temperature"
+    static let rainKey = "units.rain"
+    static let windKey = "units.wind"
+
+    static var defaults: UserDefaults {
+        UserDefaults(suiteName: DashboardStore.appGroupID) ?? .standard
+    }
+
+    static var temperature: TemperatureUnit {
+        TemperatureUnit(rawValue: defaults.string(forKey: temperatureKey) ?? "") ?? .automatic
+    }
+
+    static var rain: RainUnit {
+        RainUnit(rawValue: defaults.string(forKey: rainKey) ?? "") ?? .automatic
+    }
+
+    static var wind: WindUnit {
+        WindUnit(rawValue: defaults.string(forKey: windKey) ?? "") ?? .automatic
+    }
+
+    static func reset() {
+        [temperatureKey, rainKey, windKey].forEach { defaults.removeObject(forKey: $0) }
+    }
+}
+
+/// Air quality index bands: the European index, or the US index where the
+/// US measurement system is used.
+struct AirQualityLevel: Equatable {
+    let label: String
+    let tint: String
+
+    static func european(_ index: Double) -> AirQualityLevel {
+        switch index {
+        case ..<20: return .init(label: "Good", tint: "green")
+        case ..<40: return .init(label: "Fair", tint: "mint")
+        case ..<60: return .init(label: "Moderate", tint: "yellow")
+        case ..<80: return .init(label: "Poor", tint: "orange")
+        case ..<100: return .init(label: "Very poor", tint: "red")
+        default: return .init(label: "Extremely poor", tint: "violet")
+        }
+    }
+
+    static func us(_ index: Double) -> AirQualityLevel {
+        switch index {
+        case ...50: return .init(label: "Good", tint: "green")
+        case ...100: return .init(label: "Moderate", tint: "yellow")
+        case ...150: return .init(label: "Unhealthy for sensitive groups", tint: "orange")
+        case ...200: return .init(label: "Unhealthy", tint: "red")
+        case ...300: return .init(label: "Very unhealthy", tint: "violet")
+        default: return .init(label: "Hazardous", tint: "violet")
+        }
+    }
+}
+
 enum WeatherFormat {
     private static let temperatureFormatter: MeasurementFormatter = {
         let formatter = MeasurementFormatter()
@@ -153,14 +310,43 @@ enum WeatherFormat {
         return formatter
     }()
 
-    static func temperature(_ celsius: Double) -> String {
+    static func temperature(_ celsius: Double, unit: TemperatureUnit = UnitPreferences.temperature) -> String {
         // Avoid "-0°" for values that round to zero.
         let value = abs(celsius) < 0.5 ? 0 : celsius
-        return temperatureFormatter.string(from: Measurement(value: value, unit: UnitTemperature.celsius))
+        switch unit {
+        case .automatic:
+            return temperatureFormatter.string(from: Measurement(value: value, unit: UnitTemperature.celsius))
+        case .celsius:
+            return degrees(value)
+        case .fahrenheit:
+            return degrees(value * 9 / 5 + 32)
+        }
     }
 
-    static func precipitation(_ millimeters: Double, locale: Locale = .current) -> String {
-        if locale.measurementSystem == .us {
+    private static func degrees(_ value: Double) -> String {
+        let rounded = Int(value.rounded())
+        return "\(rounded)°"
+    }
+
+    /// "5 m/s", "18 km/h", or "11 mph".
+    static func wind(_ metersPerSecond: Double, unit: WindUnit = UnitPreferences.wind, locale: Locale = .current) -> String {
+        let speed = max(0, metersPerSecond)
+        switch unit.resolved(for: locale) {
+        case .kilometersPerHour: return "\(Int((speed * 3.6).rounded())) km/h"
+        case .milesPerHour: return "\(Int((speed * 2.23694).rounded())) mph"
+        default: return "\(Int(speed.rounded())) m/s"
+        }
+    }
+
+    /// "N", "NE", … for the direction the wind blows from.
+    static func compass(_ degrees: Double) -> String {
+        let points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        let normalized = (degrees.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+        return points[Int((normalized / 45).rounded()) % points.count]
+    }
+
+    static func precipitation(_ millimeters: Double, locale: Locale = .current, unit: RainUnit = UnitPreferences.rain) -> String {
+        if unit == .inches || (unit == .automatic && locale.measurementSystem == .us) {
             let inches = millimeters / 25.4
             return "\(inches.formatted(.number.precision(.fractionLength(inches < 1 ? 2 : 1)))) in"
         }

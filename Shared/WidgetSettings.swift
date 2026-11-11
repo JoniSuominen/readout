@@ -15,6 +15,11 @@ enum MetricCatalog {
         .init(id: "uv", name: "UV index", source: .weather, symbol: "sun.max.fill"),
         .init(id: "rain", name: "Rain today", source: .weather, symbol: "drop.fill"),
         .init(id: "tomorrow", name: "Tomorrow", source: .weather, symbol: "calendar"),
+        .init(id: "feelsLike", name: "Feels like", source: .weather, symbol: "thermometer.medium"),
+        .init(id: "wind", name: "Wind", source: .weather, symbol: "wind"),
+        .init(id: "humidity", name: "Humidity", source: .weather, symbol: "humidity.fill"),
+        .init(id: "sun", name: "Sunrise and sunset", source: .weather, symbol: "sunrise.fill"),
+        .init(id: "airQuality", name: "Air quality", source: .weather, symbol: "aqi.medium"),
         .init(id: "readiness", name: "Readiness", source: .oura, symbol: "sparkles"),
         .init(id: "sleep", name: "Sleep", source: .oura, symbol: "moon.stars.fill"),
         .init(id: "steps", name: "Steps", source: .appleHealth, symbol: "figure.walk"),
@@ -22,7 +27,12 @@ enum MetricCatalog {
         .init(id: "heartRate", name: "Heart rate", source: .appleHealth, symbol: "heart.fill"),
         .init(id: "hrv", name: "HRV", source: .appleHealth, symbol: "heart.fill"),
         .init(id: "walkingHeartRate", name: "Walking heart rate", source: .appleHealth, symbol: "heart.fill"),
-        .init(id: "nextEvent", name: "Next event", source: .calendar, symbol: "calendar")
+        .init(id: "activeEnergy", name: "Active energy", source: .appleHealth, symbol: "flame.fill"),
+        .init(id: "exercise", name: "Exercise minutes", source: .appleHealth, symbol: "figure.run"),
+        .init(id: "distance", name: "Distance", source: .appleHealth, symbol: "figure.walk.motion"),
+        .init(id: "workout", name: "Last workout", source: .appleHealth, symbol: "dumbbell.fill"),
+        .init(id: "nextEvent", name: "Next event", source: .calendar, symbol: "calendar"),
+        .init(id: "agenda", name: "Agenda", source: .calendar, symbol: "list.bullet")
     ]
 
     static func descriptor(for id: String) -> MetricDescriptor? {
@@ -30,7 +40,8 @@ enum MetricCatalog {
     }
 
     /// Lock Screen widgets set to Automatic show the first available metric.
-    static let automaticPriority = ["uv", "temperature", "nextEvent", "readiness", "steps", "sleep", "heart", "hrv", "heartRate", "walkingHeartRate", "rain", "tomorrow"]
+    static let automaticPriority = ["uv", "temperature", "nextEvent", "readiness", "steps", "sleep", "heart", "hrv", "heartRate", "walkingHeartRate", "rain", "tomorrow",
+                                    "feelsLike", "wind", "airQuality", "humidity", "sun", "activeEnergy", "exercise", "distance", "workout"]
 }
 
 enum WidgetMetricChoice: String, CaseIterable, Identifiable {
@@ -39,6 +50,11 @@ enum WidgetMetricChoice: String, CaseIterable, Identifiable {
     case temperature
     case rain
     case tomorrow
+    case feelsLike
+    case wind
+    case humidity
+    case sun
+    case airQuality
     case readiness
     case sleep
     case steps
@@ -46,6 +62,10 @@ enum WidgetMetricChoice: String, CaseIterable, Identifiable {
     case heartRate
     case hrv
     case walkingHeartRate
+    case activeEnergy
+    case exercise
+    case distance
+    case workout
     case nextEvent
 
     var id: String { rawValue }

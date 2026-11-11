@@ -82,7 +82,11 @@ final class OuraAPIConnector: DashboardConnector {
     private let configuration: OuraConfiguration
     private let session: URLSession
     private let tokenStorage: any OuraTokenStoring
-    private let authenticator: any OuraAuthenticating
+    /// Only the app can show the Oura sign-in sheet.
+    private let authenticator: (any OuraAuthenticating)?
+    /// The widget reads with the saved access token and never signs in,
+    /// rotates the single-use refresh token, or deletes credentials.
+    private let readOnly: Bool
     private let now: () -> Date
     private var tokens: OuraTokens?
     private var didLoadTokens = false
@@ -93,17 +97,34 @@ final class OuraAPIConnector: DashboardConnector {
          session: URLSession? = nil,
          tokenStorage: any OuraTokenStoring = OuraKeychainTokenStore(),
          authenticator: (any OuraAuthenticating)? = nil,
+         readOnly: Bool = false,
          now: @escaping () -> Date = Date.init) {
         self.configuration = configuration
         self.session = session ?? URLSession(configuration: .ephemeral,
                                             delegate: OuraNoRedirectDelegate(), delegateQueue: nil)
         self.tokenStorage = tokenStorage
-        self.authenticator = authenticator ?? OuraOAuthAuthenticator()
+        self.authenticator = authenticator
+        self.readOnly = readOnly
         self.now = now
     }
 
+    /// A reader for the widget, or nil unless the app saved an access token
+    /// that stays valid long enough to finish a fetch. Opening the app renews
+    /// an expired token.
+    static func widgetReader(
+        configuration: OuraConfiguration = .current,
+        tokenStorage: any OuraTokenStoring = OuraKeychainTokenStore(),
+        session: URLSession? = nil,
+        now: @escaping () -> Date = Date.init
+    ) -> OuraAPIConnector? {
+        guard configuration.isConfigured, let tokens = try? tokenStorage.load(),
+              tokens.expiresAt.timeIntervalSince(now()) > 120 else { return nil }
+        return OuraAPIConnector(configuration: configuration, session: session,
+                                tokenStorage: tokenStorage, readOnly: true, now: now)
+    }
+
     func authorize() async throws {
-        guard configuration.isConfigured else { throw OuraError.notConfigured }
+        guard configuration.isConfigured, !readOnly, let authenticator else { throw OuraError.notConfigured }
         generation += 1
         let operation = generation
         refreshTask?.cancel()
@@ -162,7 +183,7 @@ final class OuraAPIConnector: DashboardConnector {
         } catch {
             localCredentialsCleared = false
         }
-        await authenticator.cancel()
+        await authenticator?.cancel()
 
         let remoteAuthorization: DisconnectResult.RemoteAuthorization
         if let oldToken, configuration.isConfigured {
@@ -201,6 +222,8 @@ final class OuraAPIConnector: DashboardConnector {
         if rejected == nil && current.expiresAt.timeIntervalSince(now()) > 60 {
             return current.accessToken
         }
+        // Two processes must never spend the same single-use refresh token.
+        guard !readOnly else { throw OuraError.serviceUnavailable }
         if let refreshTask { return try await refreshTask.value.accessToken }
         let operation = generation
         let task = Task { @MainActor in

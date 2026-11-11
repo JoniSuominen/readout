@@ -16,13 +16,19 @@ protocol OuraTokenStoring {
     func delete() throws
 }
 
-/// Tokens remain in the main app's Keychain; widgets receive only metric snapshots.
+/// Tokens live in the Keychain group the app shares with its widget, so the
+/// widget can read Oura with the saved access token. Only the app writes or
+/// deletes them. A build without the shared group falls back to the app's own
+/// Keychain, and Oura then refreshes only in the app.
 struct OuraKeychainTokenStore: OuraTokenStoring {
     private let service: String
+    private let accessGroup: String?
     private let account = "oura.oauth.tokens"
 
-    init(service: String = Bundle.main.bundleIdentifier ?? "com.jonisuominen.readout") {
+    /// The service is fixed: the widget's bundle identifier differs from the app's.
+    init(service: String = "com.jonisuominen.readout", accessGroup: String? = DashboardStore.appGroupID) {
         self.service = service
+        self.accessGroup = accessGroup
     }
 
     func load() throws -> OuraTokens? {
@@ -50,10 +56,16 @@ struct OuraKeychainTokenStore: OuraTokenStoring {
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
+        // Without an access group the query matches the item wherever it is.
         let status = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)
         if status == errSecItemNotFound {
             var item = baseQuery
             attributes.forEach { item[$0.key] = $0.value }
+            if let accessGroup {
+                var shared = item
+                shared[kSecAttrAccessGroup as String] = accessGroup
+                if SecItemAdd(shared as CFDictionary, nil) == errSecSuccess { return }
+            }
             guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else {
                 throw OuraError.secureStorage
             }

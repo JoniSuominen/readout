@@ -208,6 +208,61 @@ final class OuraConnectorTests: XCTestCase {
         }
     }
 
+    func testWidgetReaderNeedsAnUnexpiredSavedToken() {
+        let configuration = OuraConfiguration(brokerURL: URL(string: "https://broker.example.com"))
+        let valid = OuraMemoryTokenStore(tokens: OuraTokens(accessToken: "access-old", refreshToken: "refresh-old",
+                                                           expiresAt: date.addingTimeInterval(3_600), scope: "daily"))
+        let expiring = OuraMemoryTokenStore(tokens: OuraTokens(accessToken: "access-old", refreshToken: "refresh-old",
+                                                              expiresAt: date.addingTimeInterval(60), scope: "daily"))
+        XCTAssertNotNil(OuraAPIConnector.widgetReader(configuration: configuration, tokenStorage: valid, now: { self.date }))
+        XCTAssertNil(OuraAPIConnector.widgetReader(configuration: configuration, tokenStorage: expiring, now: { self.date }))
+        XCTAssertNil(OuraAPIConnector.widgetReader(configuration: configuration, tokenStorage: OuraMemoryTokenStore(), now: { self.date }))
+        XCTAssertNil(OuraAPIConnector.widgetReader(configuration: OuraConfiguration(brokerURL: nil), tokenStorage: valid, now: { self.date }))
+    }
+
+    func testWidgetReaderReadsMetricsWithTheSavedAccessToken() async throws {
+        let store = OuraMemoryTokenStore(tokens: OuraTokens(accessToken: "access-old", refreshToken: "refresh-old",
+                                                           expiresAt: date.addingTimeInterval(3_600), scope: "daily"))
+        let reader = try XCTUnwrap(makeWidgetReader(store: store) { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer access-old")
+            return (200, self.collectionJSON(path: request.url!.path))
+        })
+        let metrics = try await reader.refresh()
+        XCTAssertEqual(metrics.map(\.value), ["86", "7h 42m"])
+        XCTAssertEqual(store.saveCount, 0)
+    }
+
+    func testWidgetReaderNeverRefreshesOrDeletesCredentials() async throws {
+        let store = OuraMemoryTokenStore(tokens: OuraTokens(accessToken: "access-old", refreshToken: "refresh-old",
+                                                           expiresAt: date.addingTimeInterval(3_600), scope: "daily"))
+        let log = OuraRequestLog()
+        let reader = try XCTUnwrap(makeWidgetReader(store: store) { request in
+            log.record(request)
+            return (401, #"{"detail":"expired"}"#)
+        })
+        do {
+            _ = try await reader.refresh()
+            XCTFail("A rejected token should fail the widget read")
+        } catch {
+            XCTAssertEqual(error as? OuraError, .serviceUnavailable)
+        }
+        XCTAssertFalse(log.requests.contains { $0.url!.path.hasPrefix("/oauth") }, "Only the app talks to the broker")
+        XCTAssertEqual(store.saveCount, 0)
+        XCTAssertEqual(store.deleteCount, 0)
+        XCTAssertEqual(store.tokens?.refreshToken, "refresh-old")
+    }
+
+    private func makeWidgetReader(store: OuraMemoryTokenStore,
+                                  handler: @escaping (URLRequest) throws -> (Int, String)) -> OuraAPIConnector? {
+        OuraTestURLProtocol.setHandler(handler)
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [OuraTestURLProtocol.self]
+        return OuraAPIConnector.widgetReader(
+            configuration: OuraConfiguration(brokerURL: URL(string: "https://broker.example.com")),
+            tokenStorage: store, session: URLSession(configuration: config), now: { self.date }
+        )
+    }
+
     private func makeConnector(store: OuraMemoryTokenStore,
                                authenticator: OuraMockAuthenticator? = nil,
                                handler: @escaping (URLRequest) throws -> (Int, String)) -> OuraAPIConnector {

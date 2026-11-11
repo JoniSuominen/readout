@@ -44,6 +44,36 @@ struct OuraConfiguration {
     }
 }
 
+struct OuraPublicConfiguration: Decodable {
+    let clientID: String
+    let redirectURI: String
+
+    enum CodingKeys: String, CodingKey {
+        case clientID = "client_id"
+        case redirectURI = "redirect_uri"
+    }
+
+    func validated() throws -> OuraPublicConfiguration {
+        guard !clientID.isEmpty, clientID.count <= 256,
+              !clientID.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }),
+              redirectURI == OuraConfiguration.callbackURL.absoluteString else {
+            throw OuraError.invalidResponse
+        }
+        return self
+    }
+}
+
+struct OuraAuthorizationGrant: Equatable {
+    let code: String
+    let codeVerifier: String
+}
+
+@MainActor
+protocol OuraAuthenticating {
+    func authenticate(configuration: OuraPublicConfiguration) async throws -> OuraAuthorizationGrant
+    func cancel() async
+}
+
 enum OuraError: LocalizedError, Equatable {
     case notConfigured
     case notConnected

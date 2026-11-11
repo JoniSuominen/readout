@@ -43,7 +43,7 @@ final class ConnectorManager: ObservableObject {
          directOuraConnector: (any DashboardConnector)? = nil) {
         let local = connectors ?? [WeatherConnector(locator: DeviceLocator()), HealthKitConnector(), OuraHealthConnector(), CalendarConnector()]
         self.connectors = Dictionary(uniqueKeysWithValues: local.map { ($0.source, $0) })
-        self.directOuraConnector = directOuraConnector ?? OuraAPIConnector()
+        self.directOuraConnector = directOuraConnector ?? OuraAPIConnector(authenticator: OuraOAuthAuthenticator())
         let defaults = UserDefaults(suiteName: DashboardStore.appGroupID) ?? .standard
         ouraConnectionMethod = OuraConnectionMethod(rawValue: defaults.string(forKey: Self.methodKey) ?? "") ?? .appleHealth
         // Permission can be revoked while the app is closed. Clear the private

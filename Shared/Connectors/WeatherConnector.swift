@@ -82,8 +82,13 @@ final class WeatherConnector: DashboardConnector {
         guard let location = WeatherLocationStore.location else {
             throw ConnectorError.unavailable("Choose a weather location in Sources.")
         }
-        let forecast = try await client.forecast(latitude: location.latitude, longitude: location.longitude)
-        return WeatherSnapshotBuilder.metrics(from: forecast, now: .now)
+        let client = self.client
+        async let forecastRequest = client.forecast(latitude: location.latitude, longitude: location.longitude)
+        // Air quality is a separate service; the forecast still shows without it.
+        let airQualityTask = Task { try? await client.airQuality(latitude: location.latitude, longitude: location.longitude) }
+        let forecast = try await forecastRequest
+        let airQuality = await airQualityTask.value
+        return WeatherSnapshotBuilder.metrics(from: forecast, airQuality: airQuality, now: .now)
     }
 
     func disconnect() async -> DisconnectResult {
@@ -115,9 +120,10 @@ struct OpenMeteoClient {
         components?.queryItems = [
             URLQueryItem(name: "latitude", value: String(format: "%.2f", latitude)),
             URLQueryItem(name: "longitude", value: String(format: "%.2f", longitude)),
-            URLQueryItem(name: "current", value: "temperature_2m,weather_code,uv_index,is_day"),
+            URLQueryItem(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,uv_index,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m"),
             URLQueryItem(name: "hourly", value: "temperature_2m,uv_index,precipitation_probability"),
-            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,uv_index_max"),
+            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,uv_index_max,sunrise,sunset"),
+            URLQueryItem(name: "wind_speed_unit", value: "ms"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "timeformat", value: "unixtime"),
             URLQueryItem(name: "forecast_days", value: "2")
@@ -125,6 +131,20 @@ struct OpenMeteoClient {
         guard let url = components?.url else { throw ConnectorError.unavailable("The weather request is invalid.") }
         let data = try await get(url)
         return try JSONDecoder().decode(OpenMeteoForecast.self, from: data)
+    }
+
+    func airQuality(latitude: Double, longitude: Double) async throws -> OpenMeteoAirQuality {
+        var components = URLComponents(string: "https://air-quality-api.open-meteo.com/v1/air-quality")
+        components?.queryItems = [
+            URLQueryItem(name: "latitude", value: String(format: "%.2f", latitude)),
+            URLQueryItem(name: "longitude", value: String(format: "%.2f", longitude)),
+            URLQueryItem(name: "current", value: "european_aqi,us_aqi,pm2_5"),
+            URLQueryItem(name: "timezone", value: "auto"),
+            URLQueryItem(name: "timeformat", value: "unixtime")
+        ]
+        guard let url = components?.url else { throw ConnectorError.unavailable("The air quality request is invalid.") }
+        let data = try await get(url)
+        return try JSONDecoder().decode(OpenMeteoAirQuality.self, from: data)
     }
 
     func searchPlaces(_ query: String) async throws -> [WeatherLocation] {
@@ -181,6 +201,12 @@ struct OpenMeteoForecast: Decodable {
         let weatherCode: Double?
         let uvIndex: Double?
         let isDay: Double?
+        let apparentTemperature: Double?
+        let humidity: Double?
+        /// Meters per second: the request sets `wind_speed_unit=ms`.
+        let windSpeed: Double?
+        let windDirection: Double?
+        let windGusts: Double?
 
         enum CodingKeys: String, CodingKey {
             case time
@@ -188,6 +214,11 @@ struct OpenMeteoForecast: Decodable {
             case weatherCode = "weather_code"
             case uvIndex = "uv_index"
             case isDay = "is_day"
+            case apparentTemperature = "apparent_temperature"
+            case humidity = "relative_humidity_2m"
+            case windSpeed = "wind_speed_10m"
+            case windDirection = "wind_direction_10m"
+            case windGusts = "wind_gusts_10m"
         }
     }
 
@@ -213,6 +244,8 @@ struct OpenMeteoForecast: Decodable {
         let precipitationSum: [Double?]?
         let precipitationProbabilityMax: [Double?]?
         let uvIndexMax: [Double?]?
+        let sunrise: [Double?]?
+        let sunset: [Double?]?
 
         enum CodingKeys: String, CodingKey {
             case time
@@ -222,6 +255,7 @@ struct OpenMeteoForecast: Decodable {
             case precipitationSum = "precipitation_sum"
             case precipitationProbabilityMax = "precipitation_probability_max"
             case uvIndexMax = "uv_index_max"
+            case sunrise, sunset
         }
     }
 
@@ -230,8 +264,30 @@ struct OpenMeteoForecast: Decodable {
     let daily: Daily
 }
 
+/// The subset of an Open-Meteo air quality response used for its tile.
+struct OpenMeteoAirQuality: Decodable {
+    struct Current: Decodable {
+        let europeanAQI: Double?
+        let usAQI: Double?
+        let pm25: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case europeanAQI = "european_aqi"
+            case usAQI = "us_aqi"
+            case pm25 = "pm2_5"
+        }
+    }
+
+    let current: Current
+}
+
 enum WeatherSnapshotBuilder {
-    static func metrics(from forecast: OpenMeteoForecast, now: Date) -> [DashboardMetric] {
+    static func metrics(
+        from forecast: OpenMeteoForecast,
+        airQuality: OpenMeteoAirQuality? = nil,
+        now: Date,
+        locale: Locale = .current
+    ) -> [DashboardMetric] {
         let current = forecast.current
         let daily = forecast.daily
         let observedAt = Date(timeIntervalSince1970: current.time)
@@ -360,7 +416,117 @@ enum WeatherSnapshotBuilder {
             ))
         }
 
+        if let feelsLike = current.apparentTemperature {
+            metrics.append(DashboardMetric(
+                id: "feelsLike",
+                source: .weather,
+                title: "Feels like",
+                value: WeatherFormat.temperature(feelsLike),
+                detail: current.temperature.map { "Actual \(WeatherFormat.temperature($0))" } ?? "",
+                symbol: "thermometer.medium",
+                tint: "orange",
+                numericValue: feelsLike,
+                observedAt: observedAt,
+                expiresAt: tomorrowStart
+            ))
+        }
+
+        if let wind = current.windSpeed {
+            let gusts = current.windGusts.flatMap { $0 >= wind + 1 ? "gusts \(WeatherFormat.wind($0, locale: locale))" : nil }
+            metrics.append(DashboardMetric(
+                id: "wind",
+                source: .weather,
+                title: "Wind",
+                value: WeatherFormat.wind(wind, locale: locale),
+                detail: joined([current.windDirection.map { "from \(WeatherFormat.compass($0))" }, gusts]),
+                symbol: "wind",
+                tint: "teal",
+                numericValue: wind,
+                observedAt: observedAt,
+                expiresAt: tomorrowStart
+            ))
+        }
+
+        if let humidity = current.humidity {
+            metrics.append(DashboardMetric(
+                id: "humidity",
+                source: .weather,
+                title: "Humidity",
+                value: "\(Int(humidity.rounded()))%",
+                detail: "Relative humidity",
+                symbol: "humidity.fill",
+                tint: "blue",
+                numericValue: humidity,
+                targetValue: 100,
+                observedAt: observedAt,
+                expiresAt: tomorrowStart
+            ))
+        }
+
+        if let sun = sunMetric(daily: daily, now: now, observedAt: observedAt, expiresAt: tomorrowStart) {
+            metrics.append(sun)
+        }
+
+        if let quality = airQualityMetric(airQuality, locale: locale, observedAt: observedAt, expiresAt: tomorrowStart) {
+            metrics.append(quality)
+        }
+
         return metrics
+    }
+
+    /// The next sunrise or sunset as the value, the one after it as the detail.
+    private static func sunMetric(daily: OpenMeteoForecast.Daily, now: Date, observedAt: Date, expiresAt: Date) -> DashboardMetric? {
+        func date(_ values: [Double?]?, _ index: Int) -> Date? {
+            element(values, index).map { Date(timeIntervalSince1970: $0) }
+        }
+        func clock(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
+        var events: [SunEvent] = []
+        for day in 0...1 {
+            if let sunrise = date(daily.sunrise, day) { events.append(SunEvent(isSunrise: true, date: sunrise)) }
+            if let sunset = date(daily.sunset, day) { events.append(SunEvent(isSunrise: false, date: sunset)) }
+        }
+        events = events.filter { $0.date > now }.sorted { $0.date < $1.date }
+        guard let next = events.first else { return nil }
+        let following = events.dropFirst().first
+        return DashboardMetric(
+            id: "sun",
+            source: .weather,
+            title: next.isSunrise ? "Sunrise" : "Sunset",
+            value: clock(next.date),
+            detail: following.map { "\($0.isSunrise ? "Sunrise" : "Sunset") \(clock($0.date))" } ?? "",
+            symbol: next.isSunrise ? "sunrise.fill" : "sunset.fill",
+            tint: "yellow",
+            observedAt: observedAt,
+            expiresAt: expiresAt
+        )
+    }
+
+    private static func airQualityMetric(_ airQuality: OpenMeteoAirQuality?, locale: Locale, observedAt: Date, expiresAt: Date) -> DashboardMetric? {
+        guard let current = airQuality?.current else { return nil }
+        let usesUSIndex = locale.measurementSystem == .us
+        guard let index = usesUSIndex ? (current.usAQI ?? current.europeanAQI) : (current.europeanAQI ?? current.usAQI) else {
+            return nil
+        }
+        let isUS = usesUSIndex ? current.usAQI != nil : current.europeanAQI == nil
+        let level = isUS ? AirQualityLevel.us(index) : AirQualityLevel.european(index)
+        return DashboardMetric(
+            id: "airQuality",
+            source: .weather,
+            title: "Air quality",
+            value: "\(Int(index.rounded()))",
+            detail: joined([level.label, current.pm25.map { "PM2.5 \(Int($0.rounded()))" }]),
+            symbol: "aqi.medium",
+            tint: level.tint,
+            numericValue: index,
+            targetValue: isUS ? 300 : 100,
+            observedAt: observedAt,
+            expiresAt: expiresAt
+        )
+    }
+
+    private struct SunEvent {
+        let isSunrise: Bool
+        let date: Date
     }
 
     private struct Hour {

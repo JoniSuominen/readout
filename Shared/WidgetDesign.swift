@@ -7,6 +7,8 @@ enum WidgetCanvas: String, Codable, CaseIterable, Identifiable {
     case small
     case medium
     case large
+    /// iPad only.
+    case extraLarge
 
     var id: String { rawValue }
 
@@ -15,11 +17,22 @@ enum WidgetCanvas: String, Codable, CaseIterable, Identifiable {
         case .small: return "Small"
         case .medium: return "Medium"
         case .large: return "Large"
+        case .extraLarge: return "Extra large"
         }
     }
 
-    var columns: Int { self == .small ? 2 : 4 }
-    var rows: Int { self == .large ? 10 : 4 }
+    var columns: Int {
+        switch self {
+        case .small: return 2
+        case .medium, .large: return 4
+        case .extraLarge: return 8
+        }
+    }
+
+    var rows: Int { self == .large || self == .extraLarge ? 10 : 4 }
+
+    /// iPhones have no extra large widgets.
+    var isPadOnly: Bool { self == .extraLarge }
 
     /// Widget size on a 6.1-inch iPhone, used for in-app previews.
     var previewSize: CGSize {
@@ -27,6 +40,7 @@ enum WidgetCanvas: String, Codable, CaseIterable, Identifiable {
         case .small: return CGSize(width: 158, height: 158)
         case .medium: return CGSize(width: 338, height: 158)
         case .large: return CGSize(width: 338, height: 354)
+        case .extraLarge: return CGSize(width: 715, height: 354)
         }
     }
 
@@ -159,13 +173,20 @@ struct WidgetDesign: Codable, Identifiable, Hashable {
     }
 
     /// Adds a tile in the first open space. Events try a wider tile first so
-    /// the start time and title fit on one line.
+    /// the start time and title fit on one line; the agenda also tries to be
+    /// tall enough for three events.
     @discardableResult
     mutating func addTile(metricID: String) -> WidgetTile? {
-        let widths = metricID == "nextEvent" ? [min(3, canvas.columns), 2, 1] : [1]
-        for width in widths {
-            if let slot = openSlot(width: width, height: 1) {
-                let tile = WidgetTile(metricID: metricID, column: slot.column, row: slot.row, width: width)
+        let wide = min(3, canvas.columns)
+        let sizes: [(width: Int, height: Int)]
+        switch metricID {
+        case "nextEvent": sizes = [(wide, 1), (2, 1), (1, 1)]
+        case "agenda": sizes = [(wide, 3), (wide, 2), (2, 2), (wide, 1), (2, 1), (1, 1)]
+        default: sizes = [(1, 1)]
+        }
+        for size in sizes {
+            if let slot = openSlot(width: size.width, height: size.height) {
+                let tile = WidgetTile(metricID: metricID, column: slot.column, row: slot.row, width: size.width, height: size.height)
                 tiles.append(tile)
                 return tile
             }
@@ -239,6 +260,14 @@ extension WidgetDesign {
         func tile(_ metricID: String, _ column: Int, _ row: Int, _ width: Int = 1, _ height: Int = 1) -> WidgetTile {
             WidgetTile(metricID: metricID, column: column, row: row, width: width, height: height)
         }
+        // Fills all ten rows so no band of empty space is left over.
+        let largeTiles = [
+            tile("temperature", 0, 0, 2, 3), tile("uv", 2, 0, 2, 3),
+            tile("rain", 0, 3, 2, 2), tile("tomorrow", 2, 3, 2, 2),
+            tile("nextEvent", 0, 5, 3, 1), tile(WidgetTile.syncID, 3, 5),
+            tile("steps", 0, 6, 2, 2), tile("sleep", 2, 6, 2, 2),
+            tile("heart", 0, 8, 2, 2), tile("readiness", 2, 8, 2, 2)
+        ]
         let tiles: [WidgetTile]
         switch canvas {
         case .small:
@@ -254,13 +283,14 @@ extension WidgetDesign {
                 tile("nextEvent", 0, 3, 3, 1), tile(WidgetTile.syncID, 3, 3)
             ]
         case .large:
-            // Fills all ten rows so no band of empty space is left over.
-            tiles = [
-                tile("temperature", 0, 0, 2, 3), tile("uv", 2, 0, 2, 3),
-                tile("rain", 0, 3, 2, 2), tile("tomorrow", 2, 3, 2, 2),
-                tile("nextEvent", 0, 5, 3, 1), tile(WidgetTile.syncID, 3, 5),
-                tile("steps", 0, 6, 2, 2), tile("sleep", 2, 6, 2, 2),
-                tile("heart", 0, 8, 2, 2), tile("readiness", 2, 8, 2, 2)
+            tiles = largeTiles
+        case .extraLarge:
+            // The large layout on the left; agenda, air, and activity beside it.
+            tiles = largeTiles + [
+                tile("agenda", 4, 0, 4, 4),
+                tile("feelsLike", 4, 4, 2, 2), tile("wind", 6, 4, 2, 2),
+                tile("airQuality", 4, 6, 2, 2), tile("humidity", 6, 6, 2, 2),
+                tile("activeEnergy", 4, 8, 2, 2), tile("exercise", 6, 8, 2, 2)
             ]
         }
         return WidgetDesign(id: "starter.\(canvas.rawValue)", name: canvas.displayName, canvas: canvas, tiles: tiles)

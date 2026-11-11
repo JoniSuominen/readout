@@ -5,7 +5,8 @@ extension WidgetCanvas {
         switch family {
         case .systemSmall: self = .small
         case .systemMedium: self = .medium
-        case .systemLarge, .systemExtraLarge: self = .large
+        case .systemLarge: self = .large
+        case .systemExtraLarge: self = .extraLarge
         default: return nil
         }
     }

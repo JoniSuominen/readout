@@ -20,6 +20,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>OuraBrokerURL</key>
+	<string>$(OURA_BROKER_URL)</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Reads upcoming events from the calendars you select so the widget can show your next event.</string>
 	<key>NSHealthShareUsageDescription</key>
