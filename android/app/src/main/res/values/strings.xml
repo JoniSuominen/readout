@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Readout</string>
+    <string name="widget_small_label">Readout small</string>
+    <string name="widget_medium_label">Readout medium</string>
+    <string name="widget_large_label">Readout large</string>
+    <string name="widget_description">Weather, health, and your next event in one layout you design in the app.</string>
+</resources>

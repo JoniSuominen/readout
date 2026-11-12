@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="launcher_background">#4F4DCB</color>
+    <!-- Widget backgrounds. Keep in step with WidgetAppearance in :core. -->
+    <color name="widget_surface_system">#FFFFFF</color>
+    <color name="widget_surface_light">#FFFFFF</color>
+    <color name="widget_surface_dark">#1C1C1F</color>
+    <color name="widget_surface_black">#000000</color>
+    <color name="widget_sky_start">#0A2154</color>
+    <color name="widget_sky_end">#124D7A</color>
+    <color name="widget_ember_start">#661424</color>
+    <color name="widget_ember_end">#94331A</color>
+</resources>
