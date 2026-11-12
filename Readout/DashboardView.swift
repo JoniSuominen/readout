@@ -31,16 +31,23 @@ struct DashboardView: View {
                     } else {
                         // Minute steps keep event countdowns and ages current.
                         TimelineView(.everyMinute) { timeline in
-                            VStack(alignment: .leading, spacing: 16) {
-                                LazyVGrid(
-                                    columns: dynamicTypeSize.isAccessibilitySize
-                                        ? [.init(.flexible())]
-                                        : [.init(.flexible()), .init(.flexible())],
-                                    spacing: 12
-                                ) {
-                                    ForEach(metrics) { MetricCard(metric: $0, now: timeline.date) }
+                            VStack(alignment: .leading, spacing: 28) {
+                                ForEach(DashboardSection.sections(for: metrics)) { section in
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        SectionHeader(section: section, now: timeline.date)
+                                        LazyVGrid(
+                                            columns: dynamicTypeSize.isAccessibilitySize
+                                                ? [.init(.flexible())]
+                                                : [.init(.flexible(), spacing: 12), .init(.flexible())],
+                                            spacing: 12
+                                        ) {
+                                            ForEach(section.metrics) {
+                                                MetricCard(metric: $0, showsOrigin: section.showsOriginOnTiles, now: timeline.date)
+                                            }
+                                        }
+                                    }
                                 }
-                                sourceRefreshDates(now: timeline.date)
+                                sourcesWithoutTiles(now: timeline.date)
                             }
                         }
                     }
@@ -69,23 +76,65 @@ struct DashboardView: View {
         }
     }
 
-    private func sourceRefreshDates(now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(DataSource.allCases.filter { connectorManager.connectedSources.contains($0) }) { source in
-                if let date = DashboardStore.updatedAt(for: source) {
-                    Text("\(source.displayName): \(UpdatedLabel.long(since: date, now: now).lowercased())")
-                } else {
-                    Text("\(source.displayName): waiting for a successful refresh")
+    /// Section headers carry freshness for sources with tiles. A connected
+    /// source that shows nothing is accounted for here instead.
+    @ViewBuilder
+    private func sourcesWithoutTiles(now: Date) -> some View {
+        let idle = DataSource.allCases.filter { source in
+            connectorManager.connectedSources.contains(source) && !metrics.contains { $0.source == source }
+        }
+        if !idle.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(idle) { source in
+                    if let date = DashboardStore.updatedAt(for: source) {
+                        Text("\(source.displayName): no data · \(UpdatedLabel.long(since: date, now: now).lowercased())")
+                    } else {
+                        Text("\(source.displayName): waiting for a successful refresh")
+                    }
                 }
             }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
+    }
+}
+
+private struct SectionHeader: View {
+    let section: DashboardSection
+    let now: Date
+
+    /// "Open-Meteo · updated 2 min ago". The age is the oldest fetch among
+    /// the section's sources and is left out until all of them have one.
+    private var caption: String? {
+        var parts: [String] = []
+        if let origin = section.headerOrigin { parts.append(origin) }
+        let dates = section.sources.map { DashboardStore.updatedAt(for: $0) }
+        if let oldest = dates.compactMap({ $0 }).min(), dates.allSatisfy({ $0 != nil }) {
+            let updated = UpdatedLabel.long(since: oldest, now: now)
+            parts.append(parts.isEmpty ? updated : updated.lowercased())
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(section.category.title, systemImage: section.category.symbol)
+                .font(.title3.bold())
+                .accessibilityAddTraits(.isHeader)
+            if let caption {
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 4)
     }
 }
 
 private struct MetricCard: View {
     let metric: DashboardMetric
+    let showsOrigin: Bool
     let now: Date
 
     var body: some View {
@@ -113,13 +162,17 @@ private struct MetricCard: View {
                 Text(metric.detail).font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text("From \(metric.originLabel)")
-                .font(.caption2).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if showsOrigin {
+                Text("From \(metric.originLabel)")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding()
-        .background(.background, in: RoundedRectangle(cornerRadius: 18))
+        // The plain background colour is black in dark mode and vanishes
+        // against the grouped page background.
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
         .accessibilityElement(children: .combine)
     }
 }
