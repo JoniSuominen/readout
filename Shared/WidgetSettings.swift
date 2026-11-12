@@ -1,7 +1,8 @@
 import Foundation
 
 /// Every metric a tile or Lock Screen widget can show, including ones whose
-/// source is not connected yet. The order is also the dashboard order.
+/// source is not connected yet. The order is the stored order and the tile
+/// picker order; the Today screen arranges tiles with DashboardCategory.
 struct MetricDescriptor: Identifiable, Hashable {
     let id: String
     let name: String
