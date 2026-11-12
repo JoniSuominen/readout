@@ -43,7 +43,7 @@ done
 cd "$REPO_ROOT"
 xcodegen generate
 if [[ "$LIST_DEVICES" == true ]]; then
-  xcodebuild -project WeatherUV.xcodeproj -scheme WeatherUV -showdestinations
+  xcodebuild -project Readout.xcodeproj -scheme Readout -showdestinations
   printf '\nUse the physical iPhone ID, not a simulator ID, with --device.\n'
   exit 0
 fi
@@ -61,8 +61,8 @@ PY
 fi
 DERIVED_DATA="$REPO_ROOT/build/DerivedData-iPhone"
 BUILD_ARGS=(build
-  -project WeatherUV.xcodeproj
-  -scheme WeatherUV
+  -project Readout.xcodeproj
+  -scheme Readout
   -configuration Debug
   -destination "platform=iOS,id=$DEVICE_ID"
   -derivedDataPath "$DERIVED_DATA"
@@ -72,7 +72,7 @@ if [[ -n "$BROKER_URL" ]]; then BUILD_ARGS+=("OURA_BROKER_URL=$BROKER_URL"); fi
 xcodebuild "${BUILD_ARGS[@]}"
 
 APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphoneos/Readout.app"
-[[ -d "$APP_PATH/PlugIns/WeatherUVWidget.appex" ]] || { printf 'Signed build is missing the app or widget.\n' >&2; exit 1; }
+[[ -d "$APP_PATH/PlugIns/ReadoutWidget.appex" ]] || { printf 'Signed build is missing the app or widget.\n' >&2; exit 1; }
 codesign --verify --deep --strict "$APP_PATH"
 APP_BUNDLE_ID="$(python3 - "$APP_PATH/Info.plist" <<'PY'
 import plistlib, sys

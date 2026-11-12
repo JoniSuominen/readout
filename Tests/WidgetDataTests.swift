@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import WeatherUV
+@testable import Readout
 
 final class WidgetDataTests: XCTestCase {
     override func setUp() {

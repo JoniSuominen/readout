@@ -11,10 +11,10 @@ The app and widget source are included. A signed release still needs an Apple De
    brew install xcodegen
    cd /path/to/readout
    xcodegen generate
-   open WeatherUV.xcodeproj
+   open Readout.xcodeproj
    ```
 
-3. Select the **WeatherUV** scheme and an installed iPhone simulator. Press **⌘R**.
+3. Select the **Readout** scheme and an installed iPhone simulator. Press **⌘R**.
 4. Open Today, Sources, and Widgets. Test empty states and saved widget choices. HealthKit availability and data vary in the simulator; final health authorization testing needs an iPhone.
 5. Launch the app once, return to the Home Screen, long-press an empty area, and add the small, medium, and large Dashboard widgets. Design layouts in the Widgets tab and pick one per widget in Edit Widget. Customize the Lock Screen to add circular, rectangular, and inline widgets.
 
@@ -128,6 +128,6 @@ The other workflows build simulator checks and an unsigned device archive, and c
 
 **Oura account cannot connect:** confirm the broker HTTPS URL, `/config`, registered callback, Worker secrets, and provider app authorization. Never paste token responses into GitHub issues. Apple Health mode remains available without a broker.
 
-**Missing project or module:** run `xcodegen generate` and open `WeatherUV.xcodeproj`.
+**Missing project or module:** run `xcodegen generate` and open `Readout.xcodeproj`.
 
 **Signing failure:** check that the team owns both bundle IDs and the App Group and has enabled the necessary capabilities, then regenerate the project.

@@ -1,6 +1,6 @@
 import SwiftUI
 import XCTest
-@testable import WeatherUV
+@testable import Readout
 
 /// Renders Home Screen layouts to PNG files for design review. CI sets
 /// TEST_RUNNER_WIDGET_SNAPSHOT_DIR (passed to tests as WIDGET_SNAPSHOT_DIR);

@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import WeatherUV
+@testable import Readout
 
 @MainActor
 final class DisconnectResultTests: XCTestCase {

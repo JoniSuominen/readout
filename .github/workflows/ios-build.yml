@@ -46,8 +46,8 @@ jobs:
       - name: Build (simulator, no signing)
         run: |
           xcodebuild build \
-            -project WeatherUV.xcodeproj \
-            -scheme WeatherUV \
+            -project Readout.xcodeproj \
+            -scheme Readout \
             -destination "id=$SIMULATOR_ID" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
@@ -59,8 +59,8 @@ jobs:
           TEST_RUNNER_WIDGET_SNAPSHOT_DIR: ${{ github.workspace }}/widget-previews
         run: |
           xcodebuild test \
-            -project WeatherUV.xcodeproj \
-            -scheme WeatherUV \
+            -project Readout.xcodeproj \
+            -scheme Readout \
             -destination "id=$SIMULATOR_ID" \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
@@ -106,8 +106,8 @@ jobs:
           test -n "$UDID"
           xcrun simctl boot "$UDID" || true
           xcodebuild build \
-            -project WeatherUV.xcodeproj \
-            -scheme WeatherUV \
+            -project Readout.xcodeproj \
+            -scheme Readout \
             -destination "id=$UDID" \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""

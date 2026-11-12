@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct WeatherUVApp: App {
+struct ReadoutApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {

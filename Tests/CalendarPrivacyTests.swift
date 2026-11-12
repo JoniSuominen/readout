@@ -1,7 +1,7 @@
 import EventKit
 import Foundation
 import XCTest
-@testable import WeatherUV
+@testable import Readout
 
 final class CalendarPrivacyTests: XCTestCase {
     override func setUp() {

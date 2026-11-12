@@ -28,10 +28,10 @@ On a Mac with Xcode and an iOS simulator runtime installed:
 ```bash
 brew install xcodegen
 xcodegen generate
-open WeatherUV.xcodeproj
+open Readout.xcodeproj
 ```
 
-Choose the **WeatherUV** scheme and run on an iPhone simulator. The targets retain their original `WeatherUV` names; the app is named Readout. The GitHub Actions workflow generates the project and runs the simulator checks. See [DEPLOYMENT.md](DEPLOYMENT.md) for signing, Oura setup, and the device release checklist.
+Choose the **Readout** scheme and run on an iPhone simulator. The GitHub Actions workflow generates the project and runs the simulator checks. See [DEPLOYMENT.md](DEPLOYMENT.md) for signing, Oura setup, and the device release checklist.
 
 To build and install on your own connected iPhone, add your Apple account in Xcode, then run:
 
@@ -68,8 +68,8 @@ The broker publishes public OAuth configuration at `GET /config` and exchanges c
 ## Repository
 
 ```text
-WeatherUV/            SwiftUI app and source connectors
-WeatherUVWidget/      WidgetKit extension
+Readout/            SwiftUI app and source connectors
+ReadoutWidget/      WidgetKit extension
 Shared/               Dashboard models, configuration, and local persistence
 Backend/              Oura OAuth token broker and deployment instructions
 project.yml           XcodeGen project definition

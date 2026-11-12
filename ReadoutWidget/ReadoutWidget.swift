@@ -1,7 +1,7 @@
 import WidgetKit
 import SwiftUI
 
-struct WeatherUVWidget: Widget {
+struct ReadoutWidget: Widget {
     let kind = "ReadoutWidget"
 
     var body: some WidgetConfiguration {

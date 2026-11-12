@@ -50,8 +50,8 @@ ARCHIVE_PATH="$ARCHIVE_STAGE/Readout.xcarchive"
 cd "$REPO_ROOT"
 xcodegen generate
 BUILD_ARGS=(archive
-  -project WeatherUV.xcodeproj
-  -scheme WeatherUV
+  -project Readout.xcodeproj
+  -scheme Readout
   -configuration Release
   -destination 'generic/platform=iOS'
   -archivePath "$ARCHIVE_PATH"
@@ -61,10 +61,10 @@ if [[ -n "$BROKER_URL" ]]; then BUILD_ARGS+=("OURA_BROKER_URL=$BROKER_URL"); fi
 xcodebuild "${BUILD_ARGS[@]}"
 
 APP_PATH="$ARCHIVE_PATH/Products/Applications/Readout.app"
-WIDGET_PATH="$APP_PATH/PlugIns/WeatherUVWidget.appex"
+WIDGET_PATH="$APP_PATH/PlugIns/ReadoutWidget.appex"
 [[ -d "$APP_PATH" && -d "$WIDGET_PATH" ]] || { printf 'Archive is missing the app or widget extension.\n' >&2; exit 1; }
 xcrun lipo "$APP_PATH/Readout" -verify_arch arm64
-xcrun lipo "$WIDGET_PATH/WeatherUVWidget" -verify_arch arm64
+xcrun lipo "$WIDGET_PATH/ReadoutWidget" -verify_arch arm64
 ditto -c -k --sequesterRsrc --keepParent "$ARCHIVE_PATH" "$OUTPUT_DIR/Readout.xcarchive.zip"
 (
   cd "$OUTPUT_DIR"
@@ -76,7 +76,7 @@ output, archive = sys.argv[1:]
 products = pathlib.Path(archive) / 'Products/Applications/Readout.app'
 with (products / 'Info.plist').open('rb') as file:
     app = plistlib.load(file)
-with (products / 'PlugIns/WeatherUVWidget.appex/Info.plist').open('rb') as file:
+with (products / 'PlugIns/ReadoutWidget.appex/Info.plist').open('rb') as file:
     widget = plistlib.load(file)
 def command(*args):
     return subprocess.check_output(args, text=True).strip()
