@@ -83,7 +83,9 @@ abstract class ReadoutWidget(private val canvas: WidgetCanvas) : GlanceAppWidget
             val snapshot = remember(revision) {
                 WidgetSnapshot.cached(container.store, container.widgetConfigs.configuration(appWidgetId), canvas, env = env)
             }
-            WidgetContent(snapshot, env)
+            // Read with each redraw, so a changed font size setting is picked up.
+            val fontScale = remember(revision) { context.resources.configuration.fontScale.takeIf { it > 0f } ?: 1f }
+            WidgetContent(snapshot, env, fontScale)
         }
     }
 }
@@ -168,12 +170,12 @@ private fun tileIntent(context: Context, metricID: String): Intent {
 }
 
 @Composable
-private fun WidgetContent(snapshot: WidgetSnapshot, env: DisplayEnvironment) {
+private fun WidgetContent(snapshot: WidgetSnapshot, env: DisplayEnvironment, fontScale: Float) {
     val context = LocalContext.current
     val size = LocalSize.current
     val appearance = snapshot.design.appearance
     val colors = WidgetColors(appearance)
-    val sizer = TextSizer(context.resources.configuration.fontScale.takeIf { it > 0f } ?: 1f)
+    val sizer = TextSizer(fontScale)
     val background = backgroundResource(appearance)
     var root = GlanceModifier.fillMaxSize().appWidgetBackground()
     if (background != null) root = root.background(ImageProvider(background))

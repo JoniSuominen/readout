@@ -321,7 +321,7 @@ fun LayoutEditorScreen(container: AppContainer, state: ConnectorManager.State, d
                                 val tileDrag = drag?.takeIf { it.tileID == tile.id }
                                 val isMoving = tileDrag?.kind == DragKind.MOVE
                                 val isResizing = tileDrag?.kind == DragKind.RESIZE
-                                val shown = if (isResizing && tileDrag != null) resized(design, tile, tileDrag.dx, tileDrag.dy, grid) else tile
+                                val shown = if (isResizing) resized(design, tile, tileDrag.dx, tileDrag.dy, grid) else tile
                                 val frame = grid.frame(shown)
                                 val blocked = isResizing && !design.canPlace(shown)
                                 val shape = RoundedCornerShape((6 * scale).dp)
@@ -385,7 +385,7 @@ fun LayoutEditorScreen(container: AppContainer, state: ConnectorManager.State, d
                                         // Inside the gesture, so the picked-up tile follows the finger
                                         // without moving the area that tracks it.
                                         .graphicsLayer {
-                                            if (isMoving && tileDrag != null) {
+                                            if (isMoving) {
                                                 translationX = tileDrag.dx * density
                                                 translationY = tileDrag.dy * density
                                                 scaleX = 1.04f
@@ -441,7 +441,7 @@ fun LayoutEditorScreen(container: AppContainer, state: ConnectorManager.State, d
                                                 }
                                             }
                                             .graphicsLayer {
-                                                if (isResizing && tileDrag != null) {
+                                                if (isResizing) {
                                                     translationX = tileDrag.dx * density
                                                     translationY = tileDrag.dy * density
                                                 }
