@@ -20,7 +20,7 @@ PKCE protects the native custom-scheme callback against code interception: an ap
 
 You need a Cloudflare account and an Oura developer application. Nothing in this directory has been deployed, and no client credentials are included.
 
-1. Register an application at [Oura API Applications](https://cloud.ouraring.com/oauth/applications), enable the `daily` scope, and register exactly `com.jonisuominen.readout://oauth/oura` as its callback. Keep the client secret private.
+1. Register an application at [Oura API Applications](https://cloud.ouraring.com/oauth/applications), enable the `daily` scope, and register exactly `com.jonisuominen.readout://oauth/oura` as its callback. For the form's privacy policy and terms of service fields, use the public URLs of [PRIVACY.md](https://github.com/JoniSuominen/readout/blob/main/PRIVACY.md) and [TERMS.md](https://github.com/JoniSuominen/readout/blob/main/TERMS.md). Keep the client secret private.
 2. Install Node.js 22 or newer, then run in this directory:
 
    ```sh

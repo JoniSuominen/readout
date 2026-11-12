@@ -77,4 +77,4 @@ project.yml           XcodeGen project definition
 Scripts/             iPhone archive packaging and local signed installation
 ```
 
-Read [LOCAL_FIRST.md](LOCAL_FIRST.md) for the storage design and [PRIVACY.md](PRIVACY.md) for data handling. Readout is available under the [MIT license](LICENSE). Release signing, a deployed Oura broker, App Store Connect setup, and physical-device acceptance testing remain the app owner's responsibility.
+Read [LOCAL_FIRST.md](LOCAL_FIRST.md) for the storage design [PRIVACY.md](PRIVACY.md) for data handling, and [TERMS.md](TERMS.md) for the terms of use. Readout is available under the [MIT license](LICENSE). Release signing, a deployed Oura broker, App Store Connect setup, and physical-device acceptance testing remain the app owner's responsibility.
