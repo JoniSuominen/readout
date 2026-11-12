@@ -199,6 +199,15 @@ object TilePresenter {
 
     private fun clamp(value: Float, lower: Float, upper: Float): Float = minOf(maxOf(value, lower), upper)
 
+    /**
+     * How much taller a line of widget text is than its font size. Android
+     * text views pad each line, so values are sized to leave that room.
+     */
+    private const val LINE_HEIGHT = 1.4f
+
+    /** The height one caption line takes, in dp at scale 1. */
+    private const val CAPTION_LINE = 14.5f
+
     private fun sync(tile: WidgetTile, context: TileContext, height: Float, isTrailing: Boolean): TilePresentation.Sync {
         val freshness = context.freshness
         val scale = context.scale
@@ -298,30 +307,40 @@ object TilePresenter {
         }
 
         fun stacked(): TilePresentation {
-            val baseSize = clamp((height - 18 * scale) * 0.62f, 14 * scale, 40 * scale)
+            val indicator = indicator(13 * scale, prefersText = true)
+            val caption = shortDetail.takeIf { height >= 56 * scale && it.isNotEmpty() }
+            val captionLines = if (tile.height >= 3) 2 else 1
+            // The value takes the height the indicator and caption leave over.
+            val taken = (if (indicator != null) 14 * scale else 0f) +
+                (if (caption != null) CAPTION_LINE * scale * captionLines else 0f)
+            val baseSize = clamp((height - taken) / LINE_HEIGHT, 14 * scale, 40 * scale)
             return TilePresentation.Stacked(
-                indicator = indicator(13 * scale, prefersText = true),
+                indicator = indicator,
                 value = value,
                 valueSize = TextFit.size(value, baseSize, width, 0.4f),
-                detail = shortDetail.takeIf { height >= 56 * scale && it.isNotEmpty() },
+                detail = caption,
                 detailSize = 10 * scale,
-                detailLines = if (tile.height >= 3) 2 else 1,
+                detailLines = captionLines,
                 accessibilityText = accessibilityText(),
                 dimmed = dimmed,
             )
         }
 
         fun detailed(): TilePresentation {
-            val baseSize = clamp((height - 30 * scale) * 0.85f, 14 * scale, 46 * scale)
+            val caption = detail.takeIf { it.isNotEmpty() }
+            val captionLines = if (tile.height >= 3) 2 else 1
+            val taken = (if (showsIndicator) CAPTION_LINE * scale else 0f) +
+                (if (caption != null) CAPTION_LINE * scale * captionLines else 0f)
+            val baseSize = clamp((height - taken) / LINE_HEIGHT, 14 * scale, 46 * scale)
             return TilePresentation.Detailed(
                 indicator = indicator(11 * scale, prefersText = false),
                 title = title.takeIf { showsIndicator },
                 titleSize = 10 * scale,
                 value = value,
                 valueSize = TextFit.size(value, baseSize, width, 0.5f),
-                detail = detail.takeIf { it.isNotEmpty() },
+                detail = caption,
                 detailSize = 10.5f * scale,
-                detailLines = if (tile.height >= 3) 2 else 1,
+                detailLines = captionLines,
                 accessibilityText = accessibilityText(),
                 dimmed = dimmed,
             )

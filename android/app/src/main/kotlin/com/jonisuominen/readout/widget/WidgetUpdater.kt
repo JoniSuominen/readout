@@ -31,11 +31,21 @@ object WidgetUpdater {
         LargeWidgetReceiver::class.java,
     )
 
-    fun requestUpdate(context: Context) {
+    /** `onDone` runs once the redraw has been handed to the launcher, or at once when no widget is placed. */
+    fun requestUpdate(context: Context, onDone: () -> Unit = {}) {
         val app = context.applicationContext
         revision.update { it + 1 }
-        if (!hasWidgets(app)) return
-        scope.launch { updateNow(app) }
+        if (!hasWidgets(app)) {
+            onDone()
+            return
+        }
+        scope.launch {
+            try {
+                updateNow(app)
+            } finally {
+                onDone()
+            }
+        }
     }
 
     suspend fun updateNow(context: Context) {
@@ -87,6 +97,8 @@ class WidgetTickReceiver : BroadcastReceiver() {
         // Nobody sees a widget while the screen is off.
         val power = context.getSystemService(PowerManager::class.java)
         if (power != null && !power.isInteractive) return
-        WidgetUpdater.requestUpdate(context)
+        // Keep the process alive until the redraw has been handed over.
+        val pending = goAsync()
+        WidgetUpdater.requestUpdate(context) { pending.finish() }
     }
 }

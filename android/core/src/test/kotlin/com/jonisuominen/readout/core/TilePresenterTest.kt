@@ -72,6 +72,21 @@ class TilePresenterTest {
     }
 
     @Test
+    fun valueLeavesRoomForItsCaptionLines() {
+        fun lines(height: Float, value: Float, captions: Int) = value * 1.4f + 14.5f * captions
+        val twoRows = TilePresenter.present(tile("uv", 2, 2), uv, context(), 150f, 60f) as TilePresentation.Detailed
+        assertTrue(lines(60f, twoRows.valueSize, 2) <= 60f)
+        val threeRows = TilePresenter.present(tile("uv", 2, 3), uv, context(), 150f, 93f) as TilePresentation.Detailed
+        assertEquals(2, threeRows.detailLines)
+        assertTrue(lines(93f, threeRows.valueSize, 3) <= 93f)
+        assertTrue(threeRows.valueSize > twoRows.valueSize)
+        val bare = TilePresenter.present(tile("uv", 2, 2, TileStyle.VALUE_ONLY), uv, context(), 150f, 60f) as TilePresentation.Detailed
+        assertTrue("Without a title row the value grows", bare.valueSize > twoRows.valueSize)
+        val stacked = TilePresenter.present(tile("uv", height = 2), uv, context(), 70f, 60f) as TilePresentation.Stacked
+        assertTrue(14f + lines(60f, stacked.valueSize, 1) <= 60f)
+    }
+
+    @Test
     fun eventKeepsStartTimeAndTitleOnOneLine() {
         val context = context(listOf(event))
         val line = TilePresenter.present(tile("nextEvent", width = 3), event, context, 230f, 27f) as TilePresentation.Line

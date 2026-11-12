@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -108,19 +109,22 @@ fun <T> ChoiceRow(
     var expanded by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
-        TextButton(onClick = { expanded = true }, enabled = enabled) {
-            Text(name(selected))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            for (option in options) {
-                DropdownMenuItem(
-                    text = { Text(name(option)) },
-                    enabled = isOptionEnabled(option),
-                    onClick = {
-                        expanded = false
-                        if (option != selected) onSelect(option)
-                    },
-                )
+        // The box anchors the menu to the button instead of the row's start.
+        Box {
+            TextButton(onClick = { expanded = true }, enabled = enabled) {
+                Text(name(selected))
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                for (option in options) {
+                    DropdownMenuItem(
+                        text = { Text(name(option)) },
+                        enabled = isOptionEnabled(option),
+                        onClick = {
+                            expanded = false
+                            if (option != selected) onSelect(option)
+                        },
+                    )
+                }
             }
         }
     }
