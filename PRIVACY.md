@@ -1,6 +1,6 @@
 # Readout privacy policy
 
-Updated October 22, 2026.
+Updated November 12, 2026.
 
 Readout displays a personal dashboard and iOS widgets using sources you choose to connect. This policy describes the open-source app and the supplied Oura token broker. A distributor who changes the code or hosting must review and update this policy for their deployment.
 
@@ -13,7 +13,7 @@ With your permission, Readout reads:
 - **Oura account:** readiness and sleep data from Oura's API after you authorize account access.
 - **Weather:** a forecast and air quality for your approximate location or a city you choose.
 
-The latest display values, source state, freshness times, calendar selection identifiers, widget layouts, and the weather location (rounded to about 1 km) are stored in the app's local shared App Group so widgets can display them. Oura account tokens are stored in iOS Keychain, not in the shared widget snapshot. The Keychain entry is shared only between the app and its own widget. Detailed health and calendar histories are not copied into a Readout user database.
+The latest display values, source state, freshness times, calendar selection identifiers, widget layouts, and the weather location (rounded to about 1 km) are stored in the app's local shared App Group so widgets can display them. A photo you choose as a widget background is copied there too, scaled down and cropped; it is read through the system photo picker, which needs no photo library permission, and is never uploaded. Oura account tokens are stored in iOS Keychain, not in the shared widget snapshot. The Keychain entry is shared only between the app and its own widget. Detailed health and calendar histories are not copied into a Readout user database.
 
 Each installed widget has separate settings managed by iOS. Widgets may refresh weather, Apple Health, Calendar, and Oura values themselves, during iOS timeline reloads or when you tap their refresh tile, under the same permissions and calendar title settings. For an Oura account the widget reads with the access token the app saved; only the app signs in, renews, or removes credentials, so Oura stops refreshing in the widget once that token expires and resumes after you open the app. Tapping a tile opens Readout, which hands calendar tiles to Calendar and health tiles to Apple Health; the link names only the tile, never its value. Lock Screen widgets default to Discreet, concealing health measurements and event titles from text, gauges, and accessibility labels. Show values marks private values for iOS privacy redaction; values may be visible to anyone who can see your device when iOS permits their display. Calendar titles additionally require the app's title opt-in. Widget refresh timing is controlled by iOS, so already displayed snapshots may remain briefly after settings change or data deletion.
 
@@ -33,7 +33,7 @@ Oura and Apple have separate privacy policies governing their services: [Oura pr
 
 ## Your choices and deletion
 
-Connecting a source is optional. You can use Apple Health mode instead of direct Oura account access. You can disconnect individual sources or use **Delete local data** in Sources to clear Readout's cached values, source state, calendar selections, widget layouts, and weather location, and attempt removal of account credentials. Installed widget settings remain managed by iOS. Deletion does not remove records from Apple Health, your calendars, or your Oura account.
+Connecting a source is optional. You can use Apple Health mode instead of direct Oura account access. You can disconnect individual sources or use **Delete local data** in Sources to clear Readout's cached values, source state, calendar selections, widget layouts and their background photos, and weather location, and attempt removal of account credentials. Installed widget settings remain managed by iOS. Deletion does not remove records from Apple Health, your calendars, or your Oura account.
 
 Oura disconnect reports local credential removal and remote revocation separately. A network or provider failure may prevent remote revocation even though local credentials are removed; Keychain removal can also fail. Readout stops using the connection immediately and offers a retry when local removal fails. A nonsecret cleanup status is retained in app preferences after deletion and relaunch so an unresolved failure remains visible; it contains no tokens or account identifiers. Review authorized applications in your Oura account to revoke access there. Manage Apple Health and Calendar permissions in iOS Settings. iOS device backup behavior depends on system settings.
 
