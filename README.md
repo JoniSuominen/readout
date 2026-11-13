@@ -54,6 +54,10 @@ The configured identifiers are:
 
 Register these identifiers and the App Group with the signing Apple Developer team. Contributors must use identifiers they control and update both entitlements and the shared store consistently.
 
+## Android
+
+An Android port lives in [`android/`](android/): a Kotlin app with Jetpack Compose screens and Glance home screen widgets, reading Health Connect and the phone's calendars. It builds in CI but has not been tested on a device yet. See [ANDROID_PORT.md](ANDROID_PORT.md) for the plan and its status, and [android/README.md](android/README.md) to build it.
+
 ## Enable direct Oura access
 
 The integration code is included; a live Oura connection still requires owner setup:
@@ -72,8 +76,9 @@ Readout/            SwiftUI app and source connectors
 ReadoutWidget/      WidgetKit extension
 Shared/               Dashboard models, configuration, and local persistence
 Backend/              Oura OAuth token broker and deployment instructions
+android/              Android port: Kotlin core logic, Compose app, Glance widgets
 project.yml           XcodeGen project definition
-.github/workflows/    Simulator validation, unsigned device archive, TestFlight upload
+.github/workflows/    Simulator validation, unsigned device archive, TestFlight upload, Android build
 Scripts/             iPhone archive packaging and local signed installation
 ```
 
