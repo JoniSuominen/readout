@@ -53,6 +53,13 @@ class DashboardStore(
     val updatedAt: Instant?
         get() = synchronized(lock) { kv.getString(UPDATED_AT_KEY)?.toLongOrNull()?.let(Instant::ofEpochMilli) }
 
+    /**
+     * Sources holding a value that has stopped describing the present, such
+     * as an event that ended or yesterday's step total. They need a fetch.
+     */
+    fun expiredSources(at: Instant = now()): Set<DataSource> =
+        synchronized(lock) { readMetrics().filter { it.isExpired(at) }.map { it.source }.toSet() }
+
     fun updatedAt(source: DataSource): Instant? =
         synchronized(lock) { readUpdates()[source.key]?.let(Instant::ofEpochMilli) }
 

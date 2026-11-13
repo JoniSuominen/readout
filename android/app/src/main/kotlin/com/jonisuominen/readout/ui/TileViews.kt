@@ -178,24 +178,24 @@ fun TileView(
                 horizontalArrangement = Arrangement.spacedBy((4 * scale).dp),
             ) {
                 presentation.indicator?.let { Indicator(it, colors) }
-                TileText(presentation.value, presentation.valueSize, colors.ink, FontWeight.SemiBold)
+                TileText(presentation.value, presentation.valueSize, colors.ink, weight = FontWeight.SemiBold)
                 presentation.detail?.let {
                     TileText(it, presentation.detailSize, colors.secondary, modifier = Modifier.weight(1f))
                 }
             }
             is TilePresentation.Stacked -> Column(modifier = Modifier.fillMaxSize()) {
                 presentation.indicator?.let { Indicator(it, colors) }
-                TileText(presentation.value, presentation.valueSize, colors.ink, FontWeight.SemiBold)
+                TileText(presentation.value, presentation.valueSize, colors.ink, weight = FontWeight.SemiBold)
                 presentation.detail?.let { TileText(it, presentation.detailSize, colors.secondary, maxLines = presentation.detailLines) }
             }
             is TilePresentation.Detailed -> Column(modifier = Modifier.fillMaxSize()) {
                 if (presentation.indicator != null || presentation.title != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy((3 * scale).dp)) {
                         presentation.indicator?.let { Indicator(it, colors) }
-                        presentation.title?.let { TileText(it, presentation.titleSize, colors.secondary, FontWeight.Medium) }
+                        presentation.title?.let { TileText(it, presentation.titleSize, colors.secondary, weight = FontWeight.Medium) }
                     }
                 }
-                TileText(presentation.value, presentation.valueSize, colors.ink, FontWeight.SemiBold)
+                TileText(presentation.value, presentation.valueSize, colors.ink, weight = FontWeight.SemiBold)
                 presentation.detail?.let { TileText(it, presentation.detailSize, colors.secondary, maxLines = presentation.detailLines) }
             }
             is TilePresentation.Line -> {
@@ -225,7 +225,7 @@ fun TileView(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy((4 * scale).dp)) {
                     presentation.indicator?.let { Indicator(it, colors) }
-                    TileText(presentation.whenText, presentation.fontSize, colors.ink, FontWeight.Bold)
+                    TileText(presentation.whenText, presentation.fontSize, colors.ink, weight = FontWeight.Bold)
                 }
                 presentation.title?.let { TileText(it, presentation.titleSize, colors.ink, maxLines = presentation.titleLines) }
             }
@@ -251,7 +251,7 @@ fun TileView(
                     )
                     presentation.label?.let {
                         Spacer(modifier = Modifier.width((3 * scale).dp))
-                        TileText(it, presentation.fontSize, color, FontWeight.Medium)
+                        TileText(it, presentation.fontSize, color, weight = FontWeight.Medium)
                     }
                 }
             }
@@ -268,9 +268,9 @@ private fun TileText(
     text: String,
     size: Float,
     color: Color,
+    modifier: Modifier = Modifier,
     weight: FontWeight = FontWeight.Normal,
     maxLines: Int = 1,
-    modifier: Modifier = Modifier,
 ) {
     val unit = fontSize(size)
     Text(
@@ -315,6 +315,6 @@ private fun Indicator(indicator: TileIndicator, colors: TileColors) {
             tint = colors.tint(indicator.tint),
             modifier = Modifier.size(indicator.size.dp),
         )
-        is TileIndicator.Label -> TileText(indicator.text, indicator.size, colors.tint(indicator.tint), FontWeight.ExtraBold)
+        is TileIndicator.Label -> TileText(indicator.text, indicator.size, colors.tint(indicator.tint), weight = FontWeight.ExtraBold)
     }
 }

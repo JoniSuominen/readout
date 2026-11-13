@@ -64,8 +64,8 @@ class AppContainer(private val context: Context) {
             store = store,
             connectors = listOf(
                 WeatherConnector(store, openMeteo, DeviceLocator(context, bridge)),
-                HealthConnectConnector(context, bridge),
-                OuraHealthConnectConnector(context, bridge),
+                HealthConnectConnector(context, store, bridge),
+                OuraHealthConnectConnector(context, store, bridge),
                 calendarConnector,
             ),
             directOuraConnector = OuraApiConnector(

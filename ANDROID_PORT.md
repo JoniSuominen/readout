@@ -10,7 +10,7 @@ The Android project has two modules:
 
 | Module | What it holds | How it is checked |
 | --- | --- | --- |
-| `android/core` | Pure Kotlin, no Android dependencies: models, the cache, freshness, layouts, privacy projection, weather, calendar and Oura logic, the connector manager, and the tile presenter. A port of `Shared/` and `ConnectorManager`. | 100 JVM unit tests, ported from `Tests/` |
+| `android/core` | Pure Kotlin, no Android dependencies: models, the cache, freshness, layouts, privacy projection, weather, calendar and Oura logic, the connector manager, and the tile presenter. A port of `Shared/` and `ConnectorManager`. | Over 100 JVM unit tests, ported from `Tests/` |
 | `android/app` | Everything that touches Android: Health Connect, the calendar provider, location, Oura sign-in, encrypted token storage, Compose screens, Glance widgets, background refresh. | Built and linted by the **Android Build** workflow |
 
 Keeping the logic in `core` means the rules that matter most (what a Discreet widget may show, when data counts as stale, how a refresh token is spent) are tested without a device or emulator.
@@ -24,6 +24,7 @@ Keeping the logic in `core` means the rules that matter most (what a Discreet wi
 | Edit Widget (AppIntent) | A widget settings screen, opened from the launcher's widget edit button | Layout and privacy mode per widget |
 | Timeline entries, one per minute | A non-wakeup alarm redraws widgets about once a minute while the screen is on | Ages and countdowns are computed when drawn, as on iOS |
 | Widget timeline reload, `BGAppRefreshTask` | One WorkManager job about every 30 minutes | Skips sources fetched in the last 10 minutes; stays silent on failure |
+| Timeline reload when a value expires | The minute redraw starts a one-off fetch for sources whose shown value has expired | The next event replaces one that ended; today's totals refetch after midnight |
 | Refresh tile (`RefreshDataIntent`) | Glance action that starts a one-off refresh job | Reports failures, like the iOS button |
 | HealthKit | Health Connect | Steps, active energy, exercise time, distance, last workout, heart rate, resting heart rate, HRV (RMSSD) |
 | Oura through Apple Health | Oura through Health Connect | Sleep sessions written by the Oura app |
@@ -41,6 +42,8 @@ Keeping the logic in `core` means the rules that matter most (what a Discreet wi
 - **No Lock Screen widgets.** Android phones have no equivalent of the accessory families, so `AccessoryWidgets` is not ported. The Discreet privacy mode still exists per widget.
 - **No extra large layout.** The iPad-only 8-column canvas is left out for now.
 - **No walking heart rate.** Health Connect has no such record type. HRV is RMSSD rather than SDNN, since that is what Health Connect stores.
+- **Revoked health access clears health values.** Health Connect reports which grants remain, which HealthKit does not. When none remain, the cached health values are removed instead of lingering with an error.
+- **Forecast times use the place's clock.** Sunrise, sunset, and the UV and rain hours are shown in the chosen city's time zone rather than the phone's.
 - **Health tiles open Readout.** Health Connect is a permissions hub rather than a health app, so a tapped health tile shows Today. Calendar tiles still open the calendar on the event's day.
 - **System appearance follows the phone's theme** with fixed light and dark surfaces. Material You wallpaper colors are used in the app, not in widgets, so tile contrast stays measured.
 

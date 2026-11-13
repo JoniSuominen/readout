@@ -1,6 +1,7 @@
 package com.jonisuominen.readout.data
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.jonisuominen.readout.core.KeyValueStore
 
 /**
@@ -11,8 +12,8 @@ class PrefsKeyValueStore(private val preferences: SharedPreferences) : KeyValueS
     override fun getString(key: String): String? = preferences.getString(key, null)
 
     override fun putString(key: String, value: String?) {
-        val editor = preferences.edit()
-        if (value == null) editor.remove(key) else editor.putString(key, value)
-        editor.apply()
+        preferences.edit {
+            if (value == null) remove(key) else putString(key, value)
+        }
     }
 }

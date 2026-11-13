@@ -3,9 +3,9 @@ package com.jonisuominen.readout.connect
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.net.toUri
 import com.jonisuominen.readout.MainActivity
 import com.jonisuominen.readout.container
 import com.jonisuominen.readout.core.OuraAuthenticating
@@ -40,7 +40,7 @@ class OuraBrowserAuthenticator(private val bridge: PermissionBridge) : OuraAuthe
             attempt = current
             try {
                 try {
-                    CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(activity, Uri.parse(url))
+                    CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(activity, url.toUri())
                 } catch (_: ActivityNotFoundException) {
                     throw OuraException(OuraError.AUTHORIZATION_DENIED)
                 }

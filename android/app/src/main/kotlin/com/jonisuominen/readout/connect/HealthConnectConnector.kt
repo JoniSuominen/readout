@@ -26,6 +26,7 @@ import com.jonisuominen.readout.core.DataSource
 import com.jonisuominen.readout.core.DisconnectResult
 import com.jonisuominen.readout.core.DisplayEnvironment
 import com.jonisuominen.readout.core.HealthSnapshotBuilder
+import com.jonisuominen.readout.core.ReadoutStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -36,9 +37,11 @@ import kotlin.reflect.KClass
 /** What both Health Connect sources need: a client, permissions, and honest errors. */
 abstract class HealthConnectSource(
     protected val context: Context,
+    protected val store: ReadoutStore,
     protected val bridge: PermissionBridge,
     protected val now: () -> Instant = Instant::now,
 ) {
+    abstract val source: DataSource
     protected abstract val readPermissions: Set<String>
     protected abstract val deniedMessage: String
 
@@ -52,24 +55,31 @@ abstract class HealthConnectSource(
     protected suspend fun requestAccess() {
         val client = client()
         val granted = client.permissionController.getGrantedPermissions()
-        if (!granted.containsAll(readPermissions)) {
-            var wanted = readPermissions
-            // Reading without the app on screen is a separate grant, offered where the phone supports it.
-            val background = client.features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND)
-            if (background == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE) {
-                wanted = wanted + HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
-            }
-            bridge.requestHealthPermissions(wanted)
+        var wanted = readPermissions
+        // Reading without the app on screen is a separate grant, offered where the
+        // phone supports it. Connecting asks for it again if it was declined before.
+        val background = client.features.getFeatureStatus(HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND)
+        if (background == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE) {
+            wanted = wanted + HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
         }
+        if (!granted.containsAll(wanted)) bridge.requestHealthPermissions(wanted)
         if (client.permissionController.getGrantedPermissions().none { it in readPermissions }) {
             throw ConnectorException.authorizationDenied(deniedMessage)
         }
     }
 
-    /** The permissions granted now. Throws when none of this source's are. */
+    /**
+     * The permissions granted now. When none of this source's remain, access
+     * was revoked: its cached values are removed before the refresh fails, so
+     * they do not stay on screen.
+     */
     protected suspend fun grantedPermissions(client: HealthConnectClient): Set<String> {
         val granted = client.permissionController.getGrantedPermissions()
         if (granted.none { it in readPermissions }) {
+            if (store.dashboard.metrics.any { it.source == source }) {
+                store.dashboard.removeMetrics(source)
+                store.onWidgetsNeedReload()
+            }
             throw ConnectorException.authorizationDenied("Allow Readout in Health Connect to refresh this data.")
         }
         return granted
@@ -121,9 +131,10 @@ abstract class HealthConnectSource(
 
 class HealthConnectConnector(
     context: Context,
+    store: ReadoutStore,
     bridge: PermissionBridge,
     now: () -> Instant = Instant::now,
-) : HealthConnectSource(context, bridge, now), DashboardConnector {
+) : HealthConnectSource(context, store, bridge, now), DashboardConnector {
     override val source = DataSource.HEALTH
 
     override val readPermissions: Set<String> = setOf(
@@ -287,9 +298,10 @@ class HealthConnectConnector(
  */
 class OuraHealthConnectConnector(
     context: Context,
+    store: ReadoutStore,
     bridge: PermissionBridge,
     now: () -> Instant = Instant::now,
-) : HealthConnectSource(context, bridge, now), DashboardConnector {
+) : HealthConnectSource(context, store, bridge, now), DashboardConnector {
     override val source = DataSource.OURA
 
     override val readPermissions: Set<String> = setOf(HealthPermission.getReadPermission(SleepSessionRecord::class))

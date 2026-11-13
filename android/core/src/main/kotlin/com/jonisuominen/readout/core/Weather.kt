@@ -5,6 +5,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -223,6 +224,8 @@ data class OpenMeteoForecast(
     val current: Current,
     val hourly: Hourly? = null,
     val daily: Daily,
+    /** The location's offset from UTC, sent because the request sets `timezone=auto`. */
+    @SerialName("utc_offset_seconds") val utcOffsetSeconds: Int? = null,
 ) {
     @Serializable
     data class Current(
@@ -292,6 +295,12 @@ object WeatherSnapshotBuilder {
         env: DisplayEnvironment = DisplayEnvironment.current,
     ): List<DashboardMetric> {
         val locale = env.locale
+        // Sunrise, the UV peak, and rain hours are read as the place's own clock
+        // times: a city chosen in another time zone is not shifted to the phone's.
+        val place = forecast.utcOffsetSeconds
+            ?.takeIf { it in -18 * 3600..18 * 3600 }
+            ?.let { env.copy(zone = ZoneOffset.ofTotalSeconds(it)) }
+            ?: env
         val current = forecast.current
         val daily = forecast.daily
         val observedAt = instant(current.time)
@@ -343,7 +352,7 @@ object WeatherSnapshotBuilder {
             val tomorrowMax = element(daily.uvIndexMax, 1)
             val detail = when {
                 peak != null && peakValue != null && peakValue >= 0.5 && Math.round(peakValue) > Math.round(uv) ->
-                    "${level.label} · peak ${peakValue.roundToInt()} at ${env.clock(peak.start)}"
+                    "${level.label} · peak ${peakValue.roundToInt()} at ${place.clock(peak.start)}"
                 uv < 0.5 && tomorrowMax != null -> "${level.label} · tomorrow ${tomorrowMax.roundToInt()}"
                 todayMax != null -> "${level.label} · max ${todayMax.roundToInt()} today"
                 else -> level.label
@@ -375,7 +384,7 @@ object WeatherSnapshotBuilder {
                     .maxByOrNull { it.precipitationProbability ?: 0.0 }
                 joined(
                     rainChance?.let { "${it.roundToInt()}%" },
-                    likely?.let { "most likely ${env.clock(it.start)}" },
+                    likely?.let { "most likely ${place.clock(it.start)}" },
                 )
             }
             metrics += DashboardMetric(
@@ -470,7 +479,7 @@ object WeatherSnapshotBuilder {
             )
         }
 
-        sunMetric(daily, now, observedAt, tomorrowStart, env)?.let { metrics += it }
+        sunMetric(daily, now, observedAt, tomorrowStart, place)?.let { metrics += it }
         airQualityMetric(airQuality, locale, observedAt, tomorrowStart)?.let { metrics += it }
 
         return metrics

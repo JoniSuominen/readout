@@ -1,6 +1,7 @@
 package com.jonisuominen.readout.widget
 
 import android.content.Context
+import androidx.core.content.edit
 import com.jonisuominen.readout.core.WidgetInstanceConfiguration
 import com.jonisuominen.readout.core.WidgetPrivacyMode
 
@@ -18,15 +19,15 @@ class WidgetConfigStore(context: Context) {
     )
 
     fun save(appWidgetId: Int, configuration: WidgetInstanceConfiguration) {
-        preferences.edit()
-            .putString("design.$appWidgetId", configuration.designID)
-            .putString("privacy.$appWidgetId", configuration.privacyMode.key)
-            .apply()
+        preferences.edit {
+            putString("design.$appWidgetId", configuration.designID)
+            putString("privacy.$appWidgetId", configuration.privacyMode.key)
+        }
     }
 
     fun delete(appWidgetIds: IntArray) {
-        val editor = preferences.edit()
-        for (id in appWidgetIds) editor.remove("design.$id").remove("privacy.$id")
-        editor.apply()
+        preferences.edit {
+            for (id in appWidgetIds) remove("design.$id").remove("privacy.$id")
+        }
     }
 }

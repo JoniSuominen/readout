@@ -261,6 +261,15 @@ class ConnectorManager(
         refreshTogether(current.connectedSources.filter { isStale(it, olderThanMillis) }.toSet(), quiet)
     }
 
+    /**
+     * Fetches again where a shown value has expired: the next event once the
+     * shown one ends, and today's totals and forecast at midnight.
+     */
+    suspend fun refreshExpiredSources(quiet: Boolean = true) = withContext(dispatcher) {
+        reloadFromStoreNow()
+        refreshTogether(store.dashboard.expiredSources(now()).intersect(current.connectedSources), quiet)
+    }
+
     /** Fetches sources side by side and reloads widgets once, not once per source. */
     private suspend fun refreshTogether(sources: Set<DataSource>, quiet: Boolean) {
         val changed = coroutineScope {
@@ -281,7 +290,8 @@ class ConnectorManager(
     suspend fun setWeatherLocation(location: WeatherLocation?) = withContext(dispatcher) {
         if (isResetting || activity(DataSource.WEATHER).isBusy) return@withContext
         if (location != null) store.weatherLocation.save(location) else store.weatherLocation.clear()
-        if (DataSource.WEATHER in current.connectedSources) {
+        // The device location may still need its permission, which only connecting asks for.
+        if (location != null && DataSource.WEATHER in current.connectedSources) {
             refresh(DataSource.WEATHER)
         } else {
             connect(DataSource.WEATHER)
@@ -382,6 +392,8 @@ class ConnectorManager(
             setActivity(source, Activity.Idle)
             return false
         }
+        // A connector that lost its access clears its own snapshot before failing.
+        synchronizeFromStore()
         val unreadable = (error as? ConnectorException)?.kind == ConnectorException.Kind.TEMPORARILY_UNREADABLE
         if (quiet || unreadable) {
             setActivity(source, if (previous is Activity.Failed) previous else Activity.Idle)

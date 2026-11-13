@@ -286,10 +286,46 @@ class ConnectorManagerTest {
         assertEquals(oslo, store.weatherLocation.location)
         assertTrue(DataSource.WEATHER in manager.now.connectedSources)
         assertEquals(1, weather.refreshCalls)
+        val paris = WeatherLocation.of("Paris", latitude = 48.85, longitude = 2.35, isCurrentLocation = false)
+        manager.setWeatherLocation(paris)
+        assertEquals(2, weather.refreshCalls)
+        assertEquals("Another city needs no permission", 1, weather.authorizeCalls)
         manager.setWeatherLocation(null)
         assertNull(store.weatherLocation.location)
-        assertEquals(2, weather.refreshCalls)
-        assertEquals(1, weather.authorizeCalls)
+        assertEquals(3, weather.refreshCalls)
+        assertEquals("The device location asks for its permission", 2, weather.authorizeCalls)
+        assertTrue(DataSource.WEATHER in manager.now.connectedSources)
+    }
+
+    @Test
+    fun expiredValuesAreFetchedAgainAndOthersLeftAlone() = runTest {
+        val manager = manager()
+        calendar.metrics = listOf(metric("nextEvent", DataSource.CALENDAR, expiresAt = baseNow.plusMinutes(30)))
+        manager.connect(DataSource.CALENDAR)
+        manager.connect(DataSource.WEATHER)
+        manager.refreshExpiredSources()
+        assertEquals("Nothing has expired yet", 1, calendar.refreshCalls)
+
+        clock.advanceMinutes(31)
+        assertEquals(setOf(DataSource.CALENDAR), store.dashboard.expiredSources())
+        assertTrue(store.dashboard.metrics.none { it.source == DataSource.CALENDAR })
+        calendar.metrics = listOf(metric("nextEvent", DataSource.CALENDAR, value = "Later", expiresAt = baseNow.plusMinutes(120)))
+        manager.refreshExpiredSources()
+        assertEquals(2, calendar.refreshCalls)
+        assertEquals(1, weather.refreshCalls)
+        assertEquals("Later", manager.now.metrics.first { it.id == "nextEvent" }.value)
+        assertTrue(store.dashboard.expiredSources().isEmpty())
+    }
+
+    @Test
+    fun aSnapshotClearedByItsConnectorDisappearsWithTheFailure() = runTest {
+        val manager = manager()
+        manager.connect(DataSource.HEALTH)
+        health.beforeRefreshReturns = { store.dashboard.removeMetrics(DataSource.HEALTH) }
+        health.refreshError = ConnectorException.authorizationDenied("Allow Readout in Health Connect to refresh this data.")
+        manager.refresh(DataSource.HEALTH)
+        assertTrue("Revoked values are not left on screen", manager.now.metrics.isEmpty())
+        assertTrue(manager.activity(DataSource.HEALTH) is ConnectorManager.Activity.Failed)
     }
 
     @Test

@@ -10,6 +10,8 @@ import android.content.Intent
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.glance.appwidget.updateAll
+import com.jonisuominen.readout.container
+import com.jonisuominen.readout.work.RefreshWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +26,10 @@ object WidgetUpdater {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private const val TICK_MILLIS = 60_000L
+    private const val EXPIRED_REFRESH_INTERVAL_MILLIS = 5 * 60_000L
+
+    @Volatile
+    private var lastExpiredRefresh = -EXPIRED_REFRESH_INTERVAL_MILLIS
 
     private val receivers = listOf(
         SmallWidgetReceiver::class.java,
@@ -34,7 +40,6 @@ object WidgetUpdater {
     /** `onDone` runs once the redraw has been handed to the launcher, or at once when no widget is placed. */
     fun requestUpdate(context: Context, onDone: () -> Unit = {}) {
         val app = context.applicationContext
-        revision.update { it + 1 }
         if (!hasWidgets(app)) {
             onDone()
             return
@@ -50,6 +55,7 @@ object WidgetUpdater {
 
     suspend fun updateNow(context: Context) {
         val app = context.applicationContext
+        revision.update { it + 1 }
         try {
             SmallWidget().updateAll(app)
             MediumWidget().updateAll(app)
@@ -57,6 +63,20 @@ object WidgetUpdater {
         } catch (_: Exception) {
             // A launcher that is restarting takes the next update instead.
         }
+    }
+
+    /**
+     * Asks for a fetch when a shown value has expired, at most once every few
+     * minutes: offline, an expired value stays expired however often this asks.
+     */
+    fun refreshExpiredValues(context: Context) {
+        val app = context.applicationContext
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastExpiredRefresh < EXPIRED_REFRESH_INTERVAL_MILLIS) return
+        val dashboard = app.container.store.dashboard
+        if (dashboard.expiredSources().none { it in dashboard.connectedSources }) return
+        lastExpiredRefresh = now
+        RefreshWorker.refreshExpired(app)
     }
 
     fun hasWidgets(context: Context): Boolean {
@@ -97,6 +117,7 @@ class WidgetTickReceiver : BroadcastReceiver() {
         // Nobody sees a widget while the screen is off.
         val power = context.getSystemService(PowerManager::class.java)
         if (power != null && !power.isInteractive) return
+        WidgetUpdater.refreshExpiredValues(context)
         // Keep the process alive until the redraw has been handed over.
         val pending = goAsync()
         WidgetUpdater.requestUpdate(context) { pending.finish() }

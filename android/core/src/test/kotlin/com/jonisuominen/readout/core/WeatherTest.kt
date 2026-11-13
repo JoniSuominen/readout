@@ -115,6 +115,22 @@ class WeatherTest {
     }
 
     @Test
+    fun clockTimesFollowTheChosenPlaceNotThePhone() {
+        // The same instants, for a city three hours ahead of the phone's UTC clock.
+        val json = forecastJSON().replaceFirst("{", """{"utc_offset_seconds":10800,""")
+        val metrics = WeatherSnapshotBuilder.metrics(decode(json), null, baseNow, UnitSelection(), testEnv).associateBy { it.id }
+        assertEquals("00:00", metrics.getValue("sun").value)
+        assertEquals("Sunrise 07:00", metrics.getValue("sun").detail)
+        assertEquals("Moderate · peak 6 at 16:00", metrics.getValue("uv").detail)
+        assertEquals("60% · most likely 18:00", metrics.getValue("rain").detail)
+        val absurd = forecastJSON().replaceFirst("{", """{"utc_offset_seconds":999999,""")
+        assertEquals(
+            "21:00",
+            WeatherSnapshotBuilder.metrics(decode(absurd), null, baseNow, UnitSelection(), testEnv).first { it.id == "sun" }.value,
+        )
+    }
+
+    @Test
     fun missingValuesAreLeftOutInsteadOfInvented() {
         val json = """{"current":{"time":$midnight},"daily":{"time":[$midnight]}}"""
         assertTrue(WeatherSnapshotBuilder.metrics(decode(json), null, baseNow, UnitSelection(), testEnv).isEmpty())

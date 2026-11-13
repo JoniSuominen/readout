@@ -3,7 +3,6 @@ package com.jonisuominen.readout.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -12,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -165,7 +165,7 @@ private fun openAppIntent(context: Context): Intent =
 /** A tile link names only the metric, never its value. */
 private fun tileIntent(context: Context, metricID: String): Intent {
     val link = TileLink.uri(metricID) ?: return openAppIntent(context)
-    return Intent(Intent.ACTION_VIEW, Uri.parse(link), context, MainActivity::class.java)
+    return Intent(Intent.ACTION_VIEW, link.toUri(), context, MainActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 }
 

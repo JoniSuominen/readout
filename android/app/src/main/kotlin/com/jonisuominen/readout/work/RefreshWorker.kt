@@ -23,11 +23,12 @@ class RefreshWorker(context: Context, parameters: WorkerParameters) : CoroutineW
     override suspend fun doWork(): Result {
         val container = applicationContext.container
         if (container.store.dashboard.connectedSources.isEmpty()) return Result.success()
-        if (inputData.getBoolean(USER_INITIATED, false)) {
+        when (inputData.getString(MODE)) {
             // The widget's refresh tile: fetch everything and report failures.
-            container.manager.refreshConnectedSources(quiet = false)
-        } else {
-            container.manager.refreshStaleSources(PASSIVE_MINIMUM_AGE_MILLIS, quiet = true)
+            MODE_USER -> container.manager.refreshConnectedSources(quiet = false)
+            // A shown value expired, such as an event that ended.
+            MODE_EXPIRED -> container.manager.refreshExpiredSources(quiet = true)
+            else -> container.manager.refreshStaleSources(PASSIVE_MINIMUM_AGE_MILLIS, quiet = true)
         }
         WidgetUpdater.updateNow(applicationContext)
         return Result.success()
@@ -38,15 +39,27 @@ class RefreshWorker(context: Context, parameters: WorkerParameters) : CoroutineW
         const val PASSIVE_MINIMUM_AGE_MILLIS = 10 * 60 * 1000L
         private const val WORK_NAME = "readout.refresh"
         private const val NOW_WORK_NAME = "readout.refresh.now"
-        private const val USER_INITIATED = "userInitiated"
+        private const val EXPIRED_WORK_NAME = "readout.refresh.expired"
+        private const val MODE = "mode"
+        private const val MODE_USER = "user"
+        private const val MODE_EXPIRED = "expired"
 
         /** Runs one refresh as soon as Android allows, for the widget's refresh tile. */
-        fun refreshNow(context: Context) {
+        fun refreshNow(context: Context) = enqueue(context, NOW_WORK_NAME, MODE_USER)
+
+        /**
+         * Fetches again for sources whose shown value has expired, so the next
+         * event replaces one that ended instead of leaving its tile empty
+         * until the next periodic refresh.
+         */
+        fun refreshExpired(context: Context) = enqueue(context, EXPIRED_WORK_NAME, MODE_EXPIRED)
+
+        private fun enqueue(context: Context, name: String, mode: String) {
             val request = OneTimeWorkRequestBuilder<RefreshWorker>()
-                .setInputData(workDataOf(USER_INITIATED to true))
+                .setInputData(workDataOf(MODE to mode))
                 .build()
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(NOW_WORK_NAME, ExistingWorkPolicy.KEEP, request)
+                .enqueueUniqueWork(name, ExistingWorkPolicy.KEEP, request)
         }
 
         fun schedule(context: Context) {
