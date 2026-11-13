@@ -50,20 +50,20 @@ Keeping the logic in `core` means the rules that matter most (what a Discreet wi
 ## Phases
 
 1. **Core logic. Done.** `android/core` with its tests.
-2. **App and widgets. Written; needs a device pass.** Connectors, the three tabs, the layout editor with drag, snap, and resize, widget settings, three Glance widgets, background refresh. It compiles and passes lint in CI. Nobody has run it on a phone yet.
+2. **App and widgets. Written; needs a device pass.** Connectors, the three tabs, the layout editor with drag, snap, and resize, widget settings, three Glance widgets, background refresh. It builds, passes lint, and renders its layouts and main screens in a JVM test (`PreviewRenderTest`), whose images CI uploads. Those images show the in-app previews, which share their tile decisions with the widget. Nobody has run it on a phone or emulator yet.
 3. **Device acceptance. To do, needs you.** On a real phone: each permission prompt and its denial, Health Connect with and without background access, calendar selection and title privacy, widget add, resize, reconfigure, and refresh, the minute redraw, dark theme, large font sizes, TalkBack through the layout editor, and the Oura sign-in round trip against your deployed broker.
 4. **Release. To do, needs you.** See below.
 
 ## What needs the owner
 
-- **A phone test.** This port was written without an emulator or device. Expect layout polish: Glance text cannot shrink to fit like SwiftUI's `minimumScaleFactor`, so tile font sizes come from an estimate in `TextFit`.
+- **A phone test.** This port was written without an emulator or device. The rendered previews have been checked, but the widget itself is drawn by Glance, which cannot shrink text to fit like SwiftUI's `minimumScaleFactor`; its tile font sizes come from an estimate in `TextFit`. Expect some layout polish on real launchers.
 - **Oura.** Nothing new to register: the Android app uses the callback already registered for iOS. Pass the broker URL at build time: `./gradlew :app:assembleRelease -POURA_BROKER_URL=https://your-broker`. Without it, Oura works through Health Connect only.
 - **Signing and Play Console.** A release keystore, an app listing, and the **Health Connect declaration form**: Google Play reviews every health permission an app requests, and the listing needs a public privacy policy URL. `PRIVACY.md` describes iOS today and needs an Android section before submission.
 - **Decisions left open:** whether to add a tablet (extra large) layout, a single-metric widget in place of the Lock Screen ones, and translations.
 
 ## Dependency versions
 
-The build pins Gradle 8.14.3, the Android Gradle plugin 8.13, Kotlin 2.2.21, and AndroidX libraries from late 2025. These are a known-compatible set chosen because the port was compiled only in CI; newer releases exist and can be adopted once the app has been run on a device.
+The build pins Gradle 8.14.3, the Android Gradle plugin 8.13, Kotlin 2.2.21, and AndroidX libraries from late 2025. These are a known-compatible set chosen while the port was first compiled only in CI; newer releases exist and can be adopted once the app has been run on a device.
 
 ## Build
 
