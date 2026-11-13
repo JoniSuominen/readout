@@ -270,11 +270,16 @@ fun LayoutEditorScreen(container: AppContainer, state: ConnectorManager.State, d
                                 }
                             },
                     ) {
-                        // Free spots get a fill and a solid outline; the rest stay faint, so color is not the only cue.
+                        // Free spots get a fill and a solid outline; empty cells stay faint, so color is not the
+                        // only cue. Cells under a tile get no outline, which would cut through its text.
+                        val covered = design.tiles.flatMap { tile ->
+                            (tile.column until tile.endColumn).flatMap { column -> (tile.row until tile.endRow).map { column to it } }
+                        }.toSet()
                         for (row in 0 until canvas.rows) {
                             for (column in 0 until canvas.columns) {
-                                val frame = grid.frame(WidgetTile("", "", column, row))
                                 val isFree = (column to row) in available
+                                if (!isFree && (column to row) in covered) continue
+                                val frame = grid.frame(WidgetTile("", "", column, row))
                                 val shape = RoundedCornerShape((5 * scale).dp)
                                 Box(
                                     modifier = Modifier
@@ -401,7 +406,8 @@ fun LayoutEditorScreen(container: AppContainer, state: ConnectorManager.State, d
                                         metric = shownMetrics.firstOrNull { it.id == tile.metricID },
                                         context = tileContext,
                                         colors = colors,
-                                        width = frame.width,
+                                        // The tile's inner padding narrows the room for its text.
+                                        width = frame.width - 6 * scale,
                                         height = frame.height,
                                         isTrailing = shown.endColumn == canvas.columns,
                                     )

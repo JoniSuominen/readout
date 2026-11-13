@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.jonisuominen.readout.core.DashboardFreshness
 import com.jonisuominen.readout.core.DashboardMetric
 import com.jonisuominen.readout.core.DataSource
 import com.jonisuominen.readout.core.DisplayEnvironment
@@ -107,9 +109,16 @@ fun previewContext(
     scale: Float,
 ): TileContext {
     val tileIDs = design.tiles.map { it.metricID }.toSet()
+    val shown = shownMetrics.filter { it.id in tileIDs }
+    // Sample values were never fetched; give them a fresh age so the refresh tile looks as it would.
+    val freshness = if (connectedSources.isEmpty()) {
+        DashboardFreshness(shown, DataSource.entries.associateWith { now }, emptyMap())
+    } else {
+        store.freshness(shown)
+    }
     return TileContext(
         now = now,
-        freshness = store.freshness(shownMetrics.filter { it.id in tileIDs }),
+        freshness = freshness,
         privacyMode = WidgetPrivacyMode.SHOW_VALUES,
         connectedSources = connectedSources.ifEmpty { DataSource.entries.toSet() },
         showsUnavailable = true,
@@ -278,6 +287,8 @@ private fun TileText(
         color = color,
         fontSize = unit,
         lineHeight = unit * 1.2f,
+        // Widget text has no extra letter spacing; the Material default would make values wider.
+        letterSpacing = 0.sp,
         fontWeight = weight,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
@@ -301,6 +312,7 @@ private fun RunsText(runs: List<TextRun>, size: Float, colors: TileColors, maxLi
         },
         fontSize = unit,
         lineHeight = unit * 1.2f,
+        letterSpacing = 0.sp,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
     )

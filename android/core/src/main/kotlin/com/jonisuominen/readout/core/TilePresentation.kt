@@ -174,7 +174,8 @@ object TextFit {
     }
 
     fun size(text: String, size: Float, availableWidth: Float, minimumScale: Float): Float {
-        val estimated = estimatedWidth(text, size)
+        // A margin for fonts that run wider than the estimate.
+        val estimated = estimatedWidth(text, size) * 1.08f
         if (estimated <= availableWidth || estimated <= 0f) return size
         return maxOf(size * minimumScale, size * availableWidth / estimated)
     }
