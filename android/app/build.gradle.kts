@@ -39,6 +39,14 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests {
+            // The render tests draw real Compose screens on the JVM.
+            isIncludeAndroidResources = true
+            all { it.systemProperty("roborazzi.test.record", "true") }
+        }
+    }
+
     lint {
         // Translations are not planned yet; everything else must pass.
         disable += setOf("MissingTranslation")
@@ -74,4 +82,10 @@ dependencies {
     implementation(libs.androidx.browser)
 
     testImplementation(libs.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

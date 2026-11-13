@@ -10,10 +10,13 @@ You need JDK 17 or newer and the Android SDK (API 36). Android Studio provides b
 cd android
 ./gradlew :core:test          # logic tests, no Android SDK needed
 ./gradlew :app:assembleDebug  # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:testDebugUnitTest  # draws layouts and screens into app/build/outputs/previews
 ./gradlew :app:installDebug   # onto a connected phone or emulator
 ```
 
-The **Android Build** workflow runs the tests, builds a debug APK, runs lint on every push that touches `android/`, and uploads the APK as an artifact.
+The **Android Build** workflow runs the tests, builds a debug APK, and runs lint on every push that touches `android/`. It uploads the APK and the rendered previews as artifacts.
+
+The preview images are drawn on the JVM with sample values, so a change to tile rendering can be looked at without a phone. They show the in-app previews; the widget itself is drawn by Glance from the same tile decisions.
 
 ### Direct Oura access
 

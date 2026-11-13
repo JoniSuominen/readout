@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    name: Core tests, debug APK & lint
+    name: Core tests, debug APK, previews & lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,6 +38,9 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
 
+      - name: Render layout and screen previews
+        run: ./gradlew :app:testDebugUnitTest
+
       - name: Lint
         run: ./gradlew :app:lintDebug
 
@@ -52,6 +55,14 @@ jobs:
           name: readout-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Upload previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-previews
+          path: android/app/build/outputs/previews
+          if-no-files-found: ignore
 
       - name: Upload reports
         if: always()
