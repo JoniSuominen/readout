@@ -104,9 +104,11 @@ struct WidgetDesign: Codable, Identifiable, Hashable {
     var canvas: WidgetCanvas
     var tiles: [WidgetTile]
     var appearance: WidgetAppearance = .system
+    /// A photo drawn over the style. Nil for a plain style.
+    var backgroundImage: WidgetBackgroundImage?
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, canvas, tiles, appearance
+        case id, name, canvas, tiles, appearance, backgroundImage
     }
 
     func fits(_ tile: WidgetTile, in canvas: WidgetCanvas) -> Bool {
@@ -244,6 +246,8 @@ extension WidgetDesign {
         canvas = try container.decode(WidgetCanvas.self, forKey: .canvas)
         tiles = try container.decode([WidgetTile].self, forKey: .tiles)
         appearance = (try? container.decodeIfPresent(WidgetAppearance.self, forKey: .appearance)) ?? .system
+        // A photo that cannot be read leaves the layout on its plain style.
+        backgroundImage = (try? container.decodeIfPresent(WidgetBackgroundImage.self, forKey: .backgroundImage))
     }
 }
 
@@ -341,6 +345,7 @@ enum WidgetDesignStore {
     }
 
     static func delete(id: String) {
+        WidgetBackgroundStore.delete(design(id: id)?.backgroundImage)
         write(designs.filter { $0.id != id })
     }
 
@@ -359,6 +364,7 @@ enum WidgetDesignStore {
 
     static func reset() {
         defaults.removeObject(forKey: designsKey)
+        WidgetBackgroundStore.removeAll()
     }
 
     private static func write(_ designs: [WidgetDesign]) {

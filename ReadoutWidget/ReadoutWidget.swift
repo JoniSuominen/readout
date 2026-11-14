@@ -9,7 +9,9 @@ struct ReadoutWidget: Widget {
             let appearance = entry.design?.appearance ?? .system
             HomeWidgetView(entry: entry)
                 .widgetAppearance(appearance)
-                .containerBackground(for: .widget) { appearance.background }
+                .containerBackground(for: .widget) {
+                    WidgetBackgroundView(appearance: appearance, photo: entry.design?.backgroundImage)
+                }
         }
         .configurationDisplayName("Dashboard")
         .description("Weather, health, and your next event in one layout you design in the app.")

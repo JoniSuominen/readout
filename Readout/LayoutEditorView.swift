@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 import WidgetKit
 
@@ -14,6 +15,9 @@ struct LayoutEditorView: View {
     @State private var availableWidth: CGFloat = 343
     @State private var message: String?
     @State private var showingDeleteConfirmation = false
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var photoSession: BackgroundPhotoSession?
+    @State private var photoMessage: String?
     private let onChange: () -> Void
 
     init(design: WidgetDesign, onChange: @escaping () -> Void) {
@@ -119,6 +123,7 @@ struct LayoutEditorView: View {
                         .padding(.vertical, 4)
                     }
                 }
+                backgroundPhotoSection
                 Section("Layout") {
                     TextField("Name", text: $design.name)
                     Button("Delete layout", role: .destructive) { showingDeleteConfirmation = true }
@@ -134,6 +139,16 @@ struct LayoutEditorView: View {
             onChange()
         }
         .onDisappear { WidgetCenter.shared.reloadAllTimelines() }
+        .onChange(of: pickedPhoto) { _, item in
+            guard let item else { return }
+            pickedPhoto = nil
+            Task { await loadPhoto(item) }
+        }
+        .sheet(item: $photoSession) { session in
+            BackgroundPhotoView(session: session, design: design, metrics: shownMetrics, context: context) { crop, opacity in
+                applyPhoto(session, crop: crop, opacity: opacity)
+            }
+        }
         .confirmationDialog("Delete this layout?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
             Button("Delete layout", role: .destructive) {
                 WidgetDesignStore.delete(id: design.id)
@@ -142,6 +157,99 @@ struct LayoutEditorView: View {
             }
         } message: {
             Text("Widgets using it switch to another \(design.canvas.displayName.lowercased()) layout.")
+        }
+    }
+
+    // MARK: Background photo
+
+    private var backgroundPhotoSection: some View {
+        Section {
+            PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                Label(design.backgroundImage == nil ? "Choose photo" : "Replace photo", systemImage: "photo")
+            }
+            if let background = design.backgroundImage {
+                Button {
+                    adjustPhoto(background)
+                } label: {
+                    Label("Scale and crop", systemImage: "crop")
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Opacity")
+                        Spacer()
+                        Text("\(Int((background.opacity * 100).rounded()))%")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { design.backgroundImage?.opacity ?? WidgetBackgroundImage.defaultOpacity },
+                            set: { design.backgroundImage?.opacity = $0 }
+                        ),
+                        in: WidgetBackgroundImage.opacityRange,
+                        step: 0.05
+                    ) {
+                        Text("Photo opacity")
+                    }
+                }
+                Button("Remove photo", role: .destructive) {
+                    design.backgroundImage = nil
+                    WidgetBackgroundStore.delete(background)
+                }
+            }
+            if let photoMessage {
+                Text(photoMessage).font(.footnote).foregroundStyle(.orange)
+            }
+        } header: {
+            Text("Background photo")
+        } footer: {
+            Text("The photo is drawn over the style above. Lower its opacity to let the style show through and keep the tiles readable. The photo stays on this device.")
+        }
+    }
+
+    @MainActor
+    private func loadPhoto(_ item: PhotosPickerItem) async {
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = BackgroundImageEditor.downsampled(data) else {
+            photoMessage = "That photo could not be loaded."
+            return
+        }
+        photoMessage = nil
+        photoSession = BackgroundPhotoSession(
+            image: image,
+            sourceFile: nil,
+            crop: BackgroundCrop(),
+            opacity: design.backgroundImage?.opacity ?? WidgetBackgroundImage.defaultOpacity
+        )
+    }
+
+    private func adjustPhoto(_ background: WidgetBackgroundImage) {
+        guard let image = WidgetBackgroundStore.image(named: background.sourceFile, cache: false) else {
+            photoMessage = "The original photo is missing. Choose it again."
+            return
+        }
+        photoMessage = nil
+        photoSession = BackgroundPhotoSession(image: image, sourceFile: background.sourceFile, crop: background.crop, opacity: background.opacity)
+    }
+
+    /// Saves the new crop, then removes the files it replaces.
+    private func applyPhoto(_ session: BackgroundPhotoSession, crop: BackgroundCrop, opacity: Double) {
+        let previous = design.backgroundImage
+        guard let saved = BackgroundImageEditor.save(
+            session.image,
+            existingSourceFile: session.sourceFile,
+            crop: crop,
+            canvas: design.canvas,
+            opacity: opacity
+        ) else {
+            photoMessage = "The photo could not be saved."
+            return
+        }
+        design.backgroundImage = saved
+        photoMessage = nil
+        if let previous {
+            WidgetBackgroundStore.delete(previous.renderedFile)
+            if previous.sourceFile != saved.sourceFile { WidgetBackgroundStore.delete(previous.sourceFile) }
         }
     }
 
@@ -214,7 +322,10 @@ struct LayoutEditorView: View {
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
         .coordinateSpace(name: "canvas")
         .padding(margin)
-        .background { design.appearance.previewBackground.clipShape(RoundedRectangle(cornerRadius: 22 * scale, style: .continuous)) }
+        .background {
+            WidgetBackgroundView(appearance: design.appearance, photo: design.backgroundImage, isPreview: true)
+                .clipShape(RoundedRectangle(cornerRadius: 22 * scale, style: .continuous))
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 22 * scale, style: .continuous)
                 .stroke(borderColor, lineWidth: target == nil ? 1 : 2)

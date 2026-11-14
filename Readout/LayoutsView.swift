@@ -91,7 +91,10 @@ struct LayoutPreview: View {
         )
         .padding(WidgetCanvas.contentMargin * scale)
         .frame(width: size.width * scale, height: size.height * scale)
-        .background { design.appearance.previewBackground.clipShape(RoundedRectangle(cornerRadius: 22 * scale, style: .continuous)) }
+        .background {
+            WidgetBackgroundView(appearance: design.appearance, photo: design.backgroundImage, isPreview: true)
+                .clipShape(RoundedRectangle(cornerRadius: 22 * scale, style: .continuous))
+        }
         .overlay(RoundedRectangle(cornerRadius: 22 * scale, style: .continuous).stroke(Color.secondary.opacity(0.25)))
         .widgetAppearance(design.appearance)
         .allowsHitTesting(false)
