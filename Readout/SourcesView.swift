@@ -2,7 +2,10 @@ import SwiftUI
 
 struct SourcesView: View {
     @EnvironmentObject private var connectorManager: ConnectorManager
+    @EnvironmentObject private var todayLayout: TodayLayoutModel
     @State private var showingDeleteConfirmation = false
+    @State private var metricsSource: DataSource?
+    @State private var ouraNeedsReconnect = false
     @State private var showingPrivacy = false
     @State private var showingCalendarSettings = false
     @State private var showingLocationPicker = false
@@ -76,6 +79,9 @@ struct SourcesView: View {
                 }
             }
             .navigationTitle("Sources")
+            .navigationDestination(item: $metricsSource) { SourceMetricsView(source: $0) }
+            .task(id: connectorManager.connectedSources) { checkOuraScope() }
+            .onChange(of: connectorManager.activity(for: .oura).isBusy) { _, _ in checkOuraScope() }
             .sheet(item: $pendingSource) { source in
                 PermissionPrimer(source: source, ouraMethod: connectorManager.ouraConnectionMethod) {
                     pendingSource = nil
@@ -110,6 +116,16 @@ struct SourcesView: View {
                 Text("This removes cached metrics, widget layouts, the weather location, app preferences, and connection state. Saved Oura credentials are removed and Oura access is revoked where possible; the result is shown here. Provider records and iOS permissions remain unchanged.")
             }
         }
+    }
+
+    private func shownCount(_ source: DataSource) -> Int {
+        MetricCatalog.all.filter { $0.source == source && todayLayout.isShown($0.id) }.count
+    }
+
+    /// A grant from before the wider Oura scope misses blood oxygen and heart health.
+    private func checkOuraScope() {
+        let scope = (try? OuraKeychainTokenStore().load())?.scope
+        ouraNeedsReconnect = OuraConfiguration.grantMissesRequestedScopes(scope)
     }
 
     /// Weather values are stored already formatted, so new units need a fetch.
@@ -148,6 +164,23 @@ struct SourcesView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             sourceButton(source)
+            Button {
+                metricsSource = source
+            } label: {
+                Label("Show on Today: \(shownCount(source)) of \(MetricCatalog.all.filter { $0.source == source }.count)",
+                      systemImage: "eye")
+            }
+            .buttonStyle(.borderless)
+            if source == .oura && ouraNeedsReconnect && connectorManager.connectedSources.contains(.oura)
+                && connectorManager.ouraConnectionMethod == .direct {
+                Button {
+                    pendingSource = .oura
+                } label: {
+                    Label("Reconnect Oura to add blood oxygen and heart health", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .buttonStyle(.borderless)
+                .disabled(connectorManager.activity(for: .oura).isBusy || connectorManager.isDeletingLocalData)
+            }
             if source == .weather && connectorManager.connectedSources.contains(source) {
                 Button {
                     showingLocationPicker = true
@@ -226,7 +259,7 @@ struct SourcesView: View {
         case .appleHealth: return "Steps, activity, workouts, heart rate, and HRV"
         case .oura:
             return connectorManager.ouraConnectionMethod == .direct
-                ? "Readiness and sleep from your Oura account"
+                ? "Readiness, sleep, stress, activity, blood oxygen, and heart health from your Oura account"
                 : "Oura sleep shared with Apple Health"
         case .calendar: return "Calendars on this iPhone, including Google and Outlook accounts"
         }
@@ -283,7 +316,7 @@ struct PermissionPrimer: View {
         case .appleHealth:
             return "Reads your step count, active energy, exercise minutes, walking and running distance, workouts, heart rate, resting and walking heart rate, and heart rate variability from Apple Health. Pick which one each tile shows in Widgets. Nothing is written to your health records. Choose the categories to share on the next iOS screen."
         case .oura where ouraMethod == .direct:
-            return "Sign in with Oura to read your readiness and sleep. Oura and a secure sign-in service handle authorization and credential refresh. Access credentials are protected in the iOS Keychain. You can disconnect from Sources at any time."
+            return "Sign in with Oura to read your readiness, sleep, activity, stress, resilience, blood oxygen, and heart health. You can decline any category on Oura's screen. Oura and a secure sign-in service handle authorization and credential refresh. Access credentials are protected in the iOS Keychain. You can disconnect from Sources at any time."
         case .oura:
             return "Reads sleep records from Apple Health and shows only records written by Oura. First enable Apple Health sharing in the Oura app. This connection does not include Oura Readiness or sleep scores."
         case .calendar:

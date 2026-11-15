@@ -20,7 +20,7 @@ final class OuraConnectorTests: XCTestCase {
         let request = authorizationRequest()
         let url = try request.authorizationURL(clientID: "public-client")
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!
-        XCTAssertEqual(query.first { $0.name == "scope" }?.value, "daily")
+        XCTAssertEqual(query.first { $0.name == "scope" }?.value, "daily spo2 heart_health")
         XCTAssertEqual(query.first { $0.name == "state" }?.value, "expected-state")
         XCTAssertEqual(query.first { $0.name == "code_challenge_method" }?.value, "S256")
         XCTAssertEqual(query.first { $0.name == "redirect_uri" }?.value,
@@ -99,6 +99,58 @@ final class OuraConnectorTests: XCTestCase {
         let metrics = OuraAPIConnector.dashboardMetrics(readiness: [], dailySleep: [], sleep: [])
         XCTAssertEqual(metrics.map(\.value), ["—", "—"])
         XCTAssertTrue(metrics.allSatisfy { $0.numericValue == nil && $0.observedAt == nil })
+    }
+
+    func testExtraMetricsComeFromTheLatestRecordsAndSkipMissingValues() throws {
+        let sleep = try JSONDecoder().decode(OuraCollectionPage<OuraSleepPeriod>.self, from: json(
+            #"{"data":[{"day":"2026-10-09","type":"long_sleep","total_sleep_duration":28800,"deep_sleep_duration":5400,"rem_sleep_duration":7200,"efficiency":91,"latency":600,"average_hrv":52,"lowest_heart_rate":47,"average_breath":14.25}]}"#)).data
+        let readiness = try JSONDecoder().decode(OuraCollectionPage<OuraDailyReadiness>.self, from: json(
+            #"{"data":[{"day":"2026-10-08","score":80,"temperature_deviation":0.1},{"day":"2026-10-09","score":86,"temperature_deviation":-0.34}]}"#)).data
+        let daily = [OuraDailySleep(day: "2026-10-09", score: 91, timestamp: nil)]
+        let extras = OuraExtraRecords(
+            activity: try JSONDecoder().decode(OuraCollectionPage<OuraDailyActivity>.self, from: json(
+                #"{"data":[{"day":"2026-10-09","score":77,"steps":8123,"active_calories":410}]}"#)).data,
+            stress: try JSONDecoder().decode(OuraCollectionPage<OuraDailyStress>.self, from: json(
+                #"{"data":[{"day":"2026-10-09","stress_high":5400,"recovery_high":2700,"day_summary":"normal"}]}"#)).data,
+            resilience: [OuraDailyResilience(day: "2026-10-09", level: "solid")],
+            spo2: try JSONDecoder().decode(OuraCollectionPage<OuraDailySpO2>.self, from: json(
+                #"{"data":[{"day":"2026-10-09","spo2_percentage":{"average":96.7},"breathing_disturbance_index":3}]}"#)).data,
+            sleepTime: [],
+            cardiovascularAge: [OuraCardiovascularAge(day: "2026-09-20", vascularAge: 31)],
+            vo2Max: try JSONDecoder().decode(OuraCollectionPage<OuraVO2Max>.self, from: json(
+                #"{"data":[{"day":"2026-09-30","vo2_max":44}]}"#)).data
+        )
+        let metrics = OuraAPIConnector.extraMetrics(readiness: readiness, dailySleep: daily, sleep: sleep, extras: extras,
+                                                    now: date, temperatureUnit: .celsius)
+        let byID = Dictionary(uniqueKeysWithValues: metrics.map { ($0.id, $0) })
+        XCTAssertEqual(byID["ouraSleepScore"]?.value, "91")
+        XCTAssertEqual(byID["ouraDeepSleep"]?.value, "1h 30m")
+        XCTAssertEqual(byID["ouraDeepSleep"]?.detail, "19% of sleep")
+        XCTAssertEqual(byID["ouraRemSleep"]?.value, "2h 0m")
+        XCTAssertEqual(byID["ouraEfficiency"]?.value, "91%")
+        XCTAssertEqual(byID["ouraEfficiency"]?.detail, "Fell asleep in 10 min")
+        XCTAssertEqual(byID["ouraLowestHeartRate"]?.value, "47")
+        XCTAssertEqual(byID["ouraOvernightHRV"]?.value, "52")
+        XCTAssertEqual(byID["ouraTemperature"]?.value, "-0.3°")
+        XCTAssertEqual(byID["ouraActivityScore"]?.value, "77")
+        XCTAssertEqual(byID["ouraStress"]?.value, "Normal")
+        XCTAssertEqual(byID["ouraStress"]?.detail, "Stressed 1h 30m · restored 45m")
+        XCTAssertEqual(byID["ouraResilience"]?.value, "Solid")
+        XCTAssertEqual(byID["ouraCardioAge"]?.value, "31")
+        XCTAssertEqual(byID["ouraVO2Max"]?.value, "44")
+        XCTAssertNotNil(byID["ouraSpO2"])
+        XCTAssertNil(byID["ouraBedtime"], "No sleep time record, no tile")
+        XCTAssertTrue(metrics.allSatisfy { $0.source == .oura && MetricCatalog.descriptor(for: $0.id) != nil })
+    }
+
+    func testEmptyExtrasProduceNoTiles() {
+        XCTAssertTrue(OuraAPIConnector.extraMetrics(readiness: [], dailySleep: [], sleep: [], extras: OuraExtraRecords(), now: date).isEmpty)
+    }
+
+    func testOlderGrantsAreFlaggedForReconnect() {
+        XCTAssertTrue(OuraConfiguration.grantMissesRequestedScopes("daily"))
+        XCTAssertFalse(OuraConfiguration.grantMissesRequestedScopes("daily spo2 heart_health personal"))
+        XCTAssertFalse(OuraConfiguration.grantMissesRequestedScopes(nil))
     }
 
     func testRefreshTokenRotationAndMissingRefreshTokenFallback() throws {

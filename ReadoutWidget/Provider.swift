@@ -23,8 +23,12 @@ struct DashboardEntry: TimelineEntry {
     let updatedAtBySource: [DataSource: Date]
     let errorsBySource: [DataSource: String]
 
+    /// Automatic skips values hidden on Today; a chosen metric always shows.
     var orderedMetrics: [DashboardMetric] {
-        configuration.orderedMetrics(metrics)
+        let layout = TodayLayoutStore.layout
+        return configuration.orderedMetrics(metrics.filter {
+            layout.isShown($0.id) || $0.id == configuration.primaryMetricID
+        })
     }
 
     /// Metrics this widget actually draws; freshness covers only these.

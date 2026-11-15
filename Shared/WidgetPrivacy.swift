@@ -131,19 +131,6 @@ enum WidgetPrivacy {
     }
 
     private static func healthTitle(for id: String) -> String {
-        switch id {
-        case "readiness": return "Readiness"
-        case "sleep": return "Sleep"
-        case "steps": return "Steps"
-        case "heart": return "Resting heart rate"
-        case "heartRate": return "Heart rate"
-        case "hrv": return "HRV"
-        case "walkingHeartRate": return "Walking heart rate"
-        case "activeEnergy": return "Active energy"
-        case "exercise": return "Exercise minutes"
-        case "distance": return "Distance"
-        case "workout": return "Last workout"
-        default: return "Health"
-        }
+        MetricCatalog.descriptor(for: id)?.name ?? "Health"
     }
 }

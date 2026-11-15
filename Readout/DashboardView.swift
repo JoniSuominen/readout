@@ -2,7 +2,9 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject private var connectorManager: ConnectorManager
+    @EnvironmentObject private var todayLayout: TodayLayoutModel
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showingEditor = false
 
     private var metrics: [DashboardMetric] { connectorManager.metrics }
     private var isRefreshing: Bool { connectorManager.activities.values.contains { $0.isBusy } }
@@ -32,7 +34,7 @@ struct DashboardView: View {
                         // Minute steps keep event countdowns and ages current.
                         TimelineView(.everyMinute) { timeline in
                             VStack(alignment: .leading, spacing: 28) {
-                                ForEach(DashboardSection.sections(for: metrics)) { section in
+                                ForEach(DashboardSection.sections(for: metrics, layout: todayLayout.layout)) { section in
                                     VStack(alignment: .leading, spacing: 10) {
                                         SectionHeader(section: section, now: timeline.date)
                                         LazyVGrid(
@@ -47,6 +49,10 @@ struct DashboardView: View {
                                         }
                                     }
                                 }
+                                if !metrics.contains(where: { todayLayout.isShown($0.id) }) {
+                                    Text("Every tile is hidden. Tap Edit to choose what Today shows.")
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                }
                                 sourcesWithoutTiles(now: timeline.date)
                             }
                         }
@@ -58,6 +64,10 @@ struct DashboardView: View {
             .navigationTitle("Today")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Edit") { showingEditor = true }
+                        .accessibilityLabel("Choose and arrange Today tiles")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await connectorManager.refreshConnectedSources() }
@@ -73,6 +83,7 @@ struct DashboardView: View {
                 }
             }
             .refreshable { await connectorManager.refreshConnectedSources() }
+            .sheet(isPresented: $showingEditor) { TodayEditView() }
         }
     }
 
@@ -118,7 +129,7 @@ private struct SectionHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label(section.category.title, systemImage: section.category.symbol)
+            Label(section.title, systemImage: section.symbol)
                 .font(.title3.bold())
                 .accessibilityAddTraits(.isHeader)
             if let caption {

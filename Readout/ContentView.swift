@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection = 0
     @StateObject private var connectorManager = ConnectorManager.shared
+    @StateObject private var todayLayout = TodayLayoutModel.shared
 
     var body: some View {
         TabView(selection: $selection) {
@@ -20,6 +21,8 @@ struct ContentView: View {
         }
         .tint(.indigo)
         .environmentObject(connectorManager)
+        .environmentObject(todayLayout)
+        .onChange(of: connectorManager.dataDeletionResult != nil) { _, _ in todayLayout.reload() }
         .task { await connectorManager.refreshIfNeeded() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {

@@ -26,7 +26,22 @@ extension WidgetMetricChoice: AppEnum {
             .exercise: "Exercise minutes",
             .distance: "Distance",
             .workout: "Last workout",
-            .nextEvent: "Next event"
+            .nextEvent: "Next event",
+            .ouraSleepScore: "Sleep score",
+            .ouraDeepSleep: "Deep sleep",
+            .ouraRemSleep: "REM sleep",
+            .ouraEfficiency: "Sleep efficiency",
+            .ouraBedtime: "Optimal bedtime",
+            .ouraTemperature: "Body temperature",
+            .ouraStress: "Stress",
+            .ouraResilience: "Resilience",
+            .ouraLowestHeartRate: "Lowest heart rate",
+            .ouraOvernightHRV: "Overnight HRV",
+            .ouraBreathingRate: "Breathing rate",
+            .ouraSpO2: "Blood oxygen",
+            .ouraCardioAge: "Cardiovascular age",
+            .ouraVO2Max: "VO2 max",
+            .ouraActivityScore: "Activity score"
         ]
     }
 }

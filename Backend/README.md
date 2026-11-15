@@ -8,7 +8,7 @@ Checked against the official documentation on October 10, 2026:
 
 - [OAuth authentication](https://cloud.ouraring.com/docs/authentication) explicitly supports **S256 PKCE**: authorization sends `code_challenge` and `code_challenge_method=S256`; token exchange sends the original `code_verifier`. Authorization code flow requires the client secret or HTTP Basic client authentication.
 - Authorization endpoint: `https://cloud.ouraring.com/oauth/authorize`. Token endpoint: `https://api.ouraring.com/oauth/token` with a UTF-8 `application/x-www-form-urlencoded` POST body.
-- Request only the `daily` scope for daily sleep, activity, and readiness. Users can decline scopes. Do not rely on the deprecated callback `scope` parameter.
+- The app requests the `daily`, `spo2`, and `heart_health` scopes (daily summaries, blood oxygen, cardiovascular age and VO2 max). Users can decline scopes; the app then reads only what was granted. Do not rely on the deprecated callback `scope` parameter.
 - Redirect URIs must exactly match the registered allowlist. This app uses `com.jonisuominen.readout://oauth/oura`. The public docs do not prohibit custom schemes; the registration and an actual device authorization must be verified before release.
 - Refresh tokens are **single use**. Persist the new pair atomically before using the refreshed access token; do not issue concurrent refreshes or blindly retry a refresh after an ambiguous network failure.
 - Oura documents access-token revocation as `https://api.ouraring.com/oauth/revoke?access_token=...`. The broker requires a POST body from the app and uses that documented URL only for its upstream request.
@@ -20,7 +20,7 @@ PKCE protects the native custom-scheme callback against code interception: an ap
 
 You need a Cloudflare account and an Oura developer application. Nothing in this directory has been deployed, and no client credentials are included.
 
-1. Register an application at [Oura API Applications](https://cloud.ouraring.com/oauth/applications), enable the `daily` scope, and register exactly `com.jonisuominen.readout://oauth/oura` as its callback. For the form's privacy policy and terms of service fields, use the public URLs of [PRIVACY.md](https://github.com/JoniSuominen/readout/blob/main/PRIVACY.md) and [TERMS.md](https://github.com/JoniSuominen/readout/blob/main/TERMS.md). Keep the client secret private.
+1. Register an application at [Oura API Applications](https://cloud.ouraring.com/oauth/applications), enable the `daily`, `spo2`, and `heart_health` scopes, and register exactly `com.jonisuominen.readout://oauth/oura` as its callback. For the form's privacy policy and terms of service fields, use the public URLs of [PRIVACY.md](https://github.com/JoniSuominen/readout/blob/main/PRIVACY.md) and [TERMS.md](https://github.com/JoniSuominen/readout/blob/main/TERMS.md). Keep the client secret private.
 2. Install Node.js 22 or newer, then run in this directory:
 
    ```sh
@@ -66,7 +66,7 @@ All endpoints require HTTPS. Do not append query parameters. POST endpoints acce
 | `POST /oauth/refresh` | `{"refresh_token":"…"}` | Token envelope below |
 | `POST /oauth/revoke` | `{"access_token":"…"}` | `204`, empty body |
 
-The app authorizes through `ASWebAuthenticationSession` directly at Oura with `response_type=code`, the public client ID, the exact redirect URI, `scope=daily`, fresh random `state`, and S256 PKCE. The verifier must be 43–128 RFC 7636 unreserved ASCII characters; it is required by the broker.
+The app authorizes through `ASWebAuthenticationSession` directly at Oura with `response_type=code`, the public client ID, the exact redirect URI, `scope=daily spo2 heart_health`, fresh random `state`, and S256 PKCE. The verifier must be 43–128 RFC 7636 unreserved ASCII characters; it is required by the broker.
 
 Successful exchange and refresh replies are `200` with only:
 

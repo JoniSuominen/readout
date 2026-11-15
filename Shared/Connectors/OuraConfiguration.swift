@@ -2,6 +2,17 @@ import Foundation
 
 struct OuraConfiguration {
     static let callbackURL = URL(string: "com.jonisuominen.readout://oauth/oura")!
+    /// Daily summaries, blood oxygen, and heart health. People can decline
+    /// any of them; the app then shows only what was granted.
+    static let requestedScope = "daily spo2 heart_health"
+
+    /// True when a saved grant predates the wider scope, so reconnecting
+    /// would add data. Unknown grants are not flagged.
+    static func grantMissesRequestedScopes(_ granted: String?) -> Bool {
+        guard let granted, !granted.isEmpty else { return false }
+        let have = Set(granted.split(whereSeparator: { $0 == " " || $0 == "," }).map(String.init))
+        return !Set(requestedScope.split(separator: " ").map(String.init)).isSubset(of: have)
+    }
     static let authorizationURL = URL(string: "https://cloud.ouraring.com/oauth/authorize")!
     static let officialAPIURL = URL(string: "https://api.ouraring.com/v2/usercollection")!
 

@@ -8,6 +8,8 @@ struct MetricDescriptor: Identifiable, Hashable {
     let name: String
     let source: DataSource
     let symbol: String
+    /// Duplicates of another source start hidden on Today.
+    var shownByDefault = true
 }
 
 enum MetricCatalog {
@@ -23,6 +25,23 @@ enum MetricCatalog {
         .init(id: "airQuality", name: "Air quality", source: .weather, symbol: "aqi.medium"),
         .init(id: "readiness", name: "Readiness", source: .oura, symbol: "sparkles"),
         .init(id: "sleep", name: "Sleep", source: .oura, symbol: "moon.stars.fill"),
+        .init(id: "ouraSleepScore", name: "Sleep score", source: .oura, symbol: "bed.double.fill"),
+        .init(id: "ouraDeepSleep", name: "Deep sleep", source: .oura, symbol: "moon.zzz.fill"),
+        .init(id: "ouraRemSleep", name: "REM sleep", source: .oura, symbol: "moon.stars"),
+        .init(id: "ouraEfficiency", name: "Sleep efficiency", source: .oura, symbol: "chart.bar.fill"),
+        .init(id: "ouraBedtime", name: "Optimal bedtime", source: .oura, symbol: "bed.double.circle.fill"),
+        .init(id: "ouraTemperature", name: "Body temperature", source: .oura, symbol: "thermometer.variable"),
+        .init(id: "ouraStress", name: "Stress", source: .oura, symbol: "brain.head.profile"),
+        .init(id: "ouraResilience", name: "Resilience", source: .oura, symbol: "shield.lefthalf.filled"),
+        .init(id: "ouraLowestHeartRate", name: "Lowest heart rate", source: .oura, symbol: "heart.fill"),
+        .init(id: "ouraOvernightHRV", name: "Overnight HRV", source: .oura, symbol: "waveform.path.ecg"),
+        .init(id: "ouraBreathingRate", name: "Breathing rate", source: .oura, symbol: "lungs.fill"),
+        .init(id: "ouraSpO2", name: "Blood oxygen", source: .oura, symbol: "drop.degreesign.fill"),
+        .init(id: "ouraCardioAge", name: "Cardiovascular age", source: .oura, symbol: "heart.text.square.fill"),
+        .init(id: "ouraVO2Max", name: "VO2 max", source: .oura, symbol: "lungs.fill"),
+        .init(id: "ouraActivityScore", name: "Activity score", source: .oura, symbol: "flame.circle.fill"),
+        .init(id: "ouraSteps", name: "Oura steps", source: .oura, symbol: "figure.walk", shownByDefault: false),
+        .init(id: "ouraActiveCalories", name: "Oura active calories", source: .oura, symbol: "flame.fill", shownByDefault: false),
         .init(id: "steps", name: "Steps", source: .appleHealth, symbol: "figure.walk"),
         .init(id: "heart", name: "Resting heart rate", source: .appleHealth, symbol: "heart.fill"),
         .init(id: "heartRate", name: "Heart rate", source: .appleHealth, symbol: "heart.fill"),
@@ -42,7 +61,10 @@ enum MetricCatalog {
 
     /// Lock Screen widgets set to Automatic show the first available metric.
     static let automaticPriority = ["uv", "temperature", "nextEvent", "readiness", "steps", "sleep", "heart", "hrv", "heartRate", "walkingHeartRate", "rain", "tomorrow",
-                                    "feelsLike", "wind", "airQuality", "humidity", "sun", "activeEnergy", "exercise", "distance", "workout"]
+                                    "feelsLike", "wind", "airQuality", "humidity", "sun", "activeEnergy", "exercise", "distance", "workout",
+                                    "ouraSleepScore", "ouraActivityScore", "ouraOvernightHRV", "ouraLowestHeartRate", "ouraTemperature",
+                                    "ouraStress", "ouraResilience", "ouraSpO2", "ouraDeepSleep", "ouraRemSleep", "ouraEfficiency",
+                                    "ouraBedtime", "ouraBreathingRate", "ouraCardioAge", "ouraVO2Max", "ouraSteps", "ouraActiveCalories"]
 }
 
 enum WidgetMetricChoice: String, CaseIterable, Identifiable {
@@ -68,6 +90,21 @@ enum WidgetMetricChoice: String, CaseIterable, Identifiable {
     case distance
     case workout
     case nextEvent
+    case ouraSleepScore
+    case ouraDeepSleep
+    case ouraRemSleep
+    case ouraEfficiency
+    case ouraBedtime
+    case ouraTemperature
+    case ouraStress
+    case ouraResilience
+    case ouraLowestHeartRate
+    case ouraOvernightHRV
+    case ouraBreathingRate
+    case ouraSpO2
+    case ouraCardioAge
+    case ouraVO2Max
+    case ouraActivityScore
 
     var id: String { rawValue }
     var metricID: String { self == .automatic ? "" : rawValue }

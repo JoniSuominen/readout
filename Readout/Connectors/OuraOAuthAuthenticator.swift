@@ -17,7 +17,7 @@ struct OuraAuthorizationRequest {
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "redirect_uri", value: OuraConfiguration.callbackURL.absoluteString),
-            URLQueryItem(name: "scope", value: "daily"),
+            URLQueryItem(name: "scope", value: OuraConfiguration.requestedScope),
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "code_challenge", value: codeChallenge),
             URLQueryItem(name: "code_challenge_method", value: "S256")

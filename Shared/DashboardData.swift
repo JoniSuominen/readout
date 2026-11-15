@@ -244,6 +244,7 @@ enum DashboardStore {
         UnitPreferences.reset()
         WidgetDesignStore.reset()
         WeatherLocationStore.clear()
+        TodayLayoutStore.reset()
         defaults.set(1, forKey: privacyVersionKey)
     }
 
