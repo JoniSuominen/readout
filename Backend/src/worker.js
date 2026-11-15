@@ -189,13 +189,13 @@ export function createHandler(fetcher = globalThis.fetch) {
           const revokeURL = new URL(REVOKE_URL);
           revokeURL.searchParams.set("access_token", revokeToken);
           upstream = await fetcher(revokeURL.toString(), {
-            method: "GET", headers: { Accept: "application/json" }, redirect: "error", signal: abort.signal,
+            method: "GET", headers: { Accept: "application/json" }, redirect: "manual", signal: abort.signal,
           });
         } else {
           upstream = await fetcher(TOKEN_URL, {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-            body: params.toString(), redirect: "error", signal: abort.signal,
+            body: params.toString(), redirect: "manual", signal: abort.signal,
           });
         }
         if (!upstream.ok) return await upstreamFailure(upstream);

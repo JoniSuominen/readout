@@ -40,7 +40,7 @@ test("code exchange sends the verifier and server secret only to the fixed upstr
   const handle = createHandler(async (url, options) => {
     assert.equal(url, "https://api.ouraring.com/oauth/token");
     assert.equal(options.method, "POST");
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     assert.equal(options.headers["Content-Type"], "application/x-www-form-urlencoded");
     assert.deepEqual(Object.fromEntries(new URLSearchParams(options.body)), {
       client_id: env.OURA_CLIENT_ID, client_secret: env.OURA_CLIENT_SECRET,
@@ -95,7 +95,7 @@ test("revoke accepts a POST body and uses only Oura's documented fixed revoke UR
     assert.equal(parsed.searchParams.get("access_token"), "access.value");
     assert.equal(parsed.searchParams.size, 1);
     assert.equal(options.method, "GET");
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     return new Response(null, { status: 200 });
   });
   const result = await handle(request("/oauth/revoke", { access_token: "access.value" }), env);
@@ -187,4 +187,16 @@ test("Oura rate limits retain only a bounded Retry-After header", async () => {
     assert.equal(result.headers.get("Retry-After"), expected);
     assert.deepEqual(await result.json(), { error: "temporarily_unavailable" });
   }
+});
+
+test("upstream redirects are refused, not followed", async () => {
+  let calls = 0;
+  const handle = createHandler(async () => {
+    calls += 1;
+    return new Response(null, { status: 302, headers: { Location: "https://attacker.example/" } });
+  });
+  const result = await handle(request("/oauth/refresh", { refresh_token: "refresh.value" }), env);
+  assert.equal(calls, 1);
+  assert.equal(result.status, 502);
+  assert.deepEqual(await result.json(), { error: "server_error" });
 });
