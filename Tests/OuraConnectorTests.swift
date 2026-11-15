@@ -201,7 +201,7 @@ final class OuraConnectorTests: XCTestCase {
             return (200, self.collectionJSON(path: request.url!.path))
         }
         let metrics = try await connector.refresh()
-        XCTAssertEqual(metrics.map(\.value), ["86", "7h 42m"])
+        XCTAssertEqual(metrics.map(\.value), ["86", "7h 42m", "91"], "Readiness, sleep, then the sleep score tile")
         XCTAssertEqual(log.requests.filter { $0.url!.path == "/oauth/refresh" }.count, 1)
         XCTAssertEqual(store.tokens?.refreshToken, "refresh-new")
     }
@@ -280,7 +280,7 @@ final class OuraConnectorTests: XCTestCase {
             return (200, self.collectionJSON(path: request.url!.path))
         })
         let metrics = try await reader.refresh()
-        XCTAssertEqual(metrics.map(\.value), ["86", "7h 42m"])
+        XCTAssertEqual(metrics.map(\.value), ["86", "7h 42m", "91"], "Readiness, sleep, then the sleep score tile")
         XCTAssertEqual(store.saveCount, 0)
     }
 
