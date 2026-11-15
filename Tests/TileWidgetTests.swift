@@ -63,11 +63,15 @@ final class WidgetDesignTests: XCTestCase {
         let unknown = Data(#"{"id":"new","name":"New","canvas":"small","tiles":[],"appearance":"neon"}"#.utf8)
         XCTAssertEqual(try JSONDecoder().decode(WidgetDesign.self, from: unknown).appearance, .system)
 
+        // The removed Transparent style drew a dark box on the Home Screen.
+        let transparent = Data(#"{"id":"clear","name":"Clear","canvas":"medium","tiles":[],"appearance":"transparent"}"#.utf8)
+        XCTAssertEqual(try JSONDecoder().decode(WidgetDesign.self, from: transparent).appearance, .system)
+
         var styled = WidgetDesign(id: "styled", name: "Styled", canvas: .medium, tiles: [])
-        styled.appearance = .transparent
+        styled.appearance = .sky
         let copy = try JSONDecoder().decode(WidgetDesign.self, from: JSONEncoder().encode(styled))
         XCTAssertEqual(copy, styled)
-        XCTAssertEqual(copy.appearance, .transparent)
+        XCTAssertEqual(copy.appearance, .sky)
     }
 
     func testGradientAppearancesKeepTextAndTintsReadable() {

@@ -157,7 +157,7 @@ enum WidgetBackgroundStore {
 struct WidgetBackgroundView: View {
     let appearance: WidgetAppearance
     let photo: WidgetBackgroundImage?
-    /// In-app previews stand a transparent widget on a sample wallpaper.
+    /// In-app previews draw the style outside a widget container.
     var isPreview = false
 
     var body: some View {

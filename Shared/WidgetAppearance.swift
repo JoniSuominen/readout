@@ -44,8 +44,8 @@ enum WidgetAppearance: String, Codable, CaseIterable, Identifiable {
     case light
     case dark
     case black
-    /// No background, so the Home Screen wallpaper shows through.
-    case transparent
+    // There is no transparent style: iOS draws a dark box behind a clear
+    // widget, never the wallpaper. Layouts saved with it load as System.
     case sky
     case ember
 
@@ -57,7 +57,6 @@ enum WidgetAppearance: String, Codable, CaseIterable, Identifiable {
         case .light: return "Light"
         case .dark: return "Dark"
         case .black: return "Black"
-        case .transparent: return "Transparent"
         case .sky: return "Sky"
         case .ember: return "Ember"
         }
@@ -66,7 +65,7 @@ enum WidgetAppearance: String, Codable, CaseIterable, Identifiable {
     /// The scheme tiles draw in. Nil follows the phone.
     var colorScheme: ColorScheme? {
         switch self {
-        case .system, .transparent: return nil
+        case .system: return nil
         case .light: return .light
         case .dark, .black, .sky, .ember: return .dark
         }
@@ -99,26 +98,17 @@ enum WidgetAppearance: String, Codable, CaseIterable, Identifiable {
             Color(red: 0.11, green: 0.11, blue: 0.12)
         case .black:
             Color.black
-        case .transparent:
-            Color.clear
         case .sky, .ember:
             LinearGradient(colors: gradientStops.map(\.color), startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 
-    /// The background for in-app previews. A transparent widget sits on a
-    /// stand-in wallpaper, otherwise nothing would show where it ends.
+    /// The background for in-app previews, matching what the Home Screen draws.
     @ViewBuilder
     var previewBackground: some View {
         switch self {
         case .system:
             Color(.systemBackground)
-        case .transparent:
-            LinearGradient(
-                colors: [Color.indigo.opacity(0.5), Color.teal.opacity(0.5)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
         default:
             background
         }
