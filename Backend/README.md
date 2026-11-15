@@ -35,6 +35,17 @@ You need a Cloudflare account and an Oura developer application. Nothing in this
 
    Wrangler prompts privately for each value. Never pass the client secret as a CLI argument, commit it, or add it to Xcode settings. The fixed callback allowlist is in `src/worker.js`, not controlled by a request.
 
+   **Or deploy from GitHub Actions** (no local Node.js needed). In the repository's **Settings → Secrets and variables → Actions**, add these repository secrets:
+
+   | Secret | Value |
+   | --- | --- |
+   | `CLOUDFLARE_API_TOKEN` | A Cloudflare API token made from the **Edit Cloudflare Workers** template |
+   | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID (Workers & Pages overview page) |
+   | `OURA_CLIENT_ID` | Oura application client ID |
+   | `OURA_CLIENT_SECRET` | Oura application client secret |
+
+   Then run **Actions → Deploy Oura Broker → Run workflow**. It also runs on every push to `main` that changes `Backend/`, and skips with a warning while any secret is missing. It tests, deploys, then pipes both Oura values to `wrangler secret bulk` through stdin. Until the secrets are set, the broker fails closed with `503`. On a brand-new Cloudflare account, open **Workers & Pages** once to pick a `workers.dev` subdomain first. GitHub masks secrets in logs and does not expose them to pull requests from forks.
+
 3. Set the app's `OURA_BROKER_URL` build setting (which populates `OuraBrokerURL` in Info.plist) to the actual HTTPS Worker origin, for example the origin Wrangler reports after deployment. `GET /config` supplies the public Oura client ID and callback. Leave the setting empty when direct Oura is unavailable; Apple Health imports can still work.
 4. Confirm `GET /config` returns your public client ID and the callback, then test on an iPhone: authorization, daily metrics, disconnect/revocation, reconnect, denied consent, refresh, and a stale refresh token. Do not enter an access or refresh token into a URL or command line while testing.
 5. Request Oura approval before serving more than ten users. Publish the app privacy policy and support details required for approval.

@@ -46,7 +46,7 @@ Apple Health mode can read Oura sleep shared by the Oura app without a broker. F
 
    If you fork the app and change the callback scheme, update the iOS URL scheme, `OuraConfiguration.callbackURL`, broker callback configuration, and Oura registration together. Oura may require application approval for access beyond its developer testing limit; check the current provider requirements before a public launch.
 
-2. Follow [Backend/README.md](Backend/README.md) to deploy the supplied Cloudflare Worker over HTTPS. Set **`OURA_CLIENT_ID`** and **`OURA_CLIENT_SECRET`** as Worker secrets. Never put the client secret in an Xcode build setting or app file.
+2. Follow [Backend/README.md](Backend/README.md) to deploy the supplied Cloudflare Worker over HTTPS. Set **`OURA_CLIENT_ID`** and **`OURA_CLIENT_SECRET`** as Worker secrets, either with Wrangler locally or by storing them as GitHub repository secrets and running the **Deploy Oura Broker** workflow. Never put the client secret in an Xcode build setting, app file, or the iPhone build workflows.
 3. Configure the app's **`OURA_BROKER_URL`** build setting with the broker's HTTPS base URL. It populates **`OuraBrokerURL`** in Info.plist. Regenerate the project if you change `project.yml`.
 4. Verify `GET /config` returns the registered public client ID and callback URI. Review the broker's rate limiting, access logs, and retention; do not log token request bodies or responses.
 5. Run the app on an iPhone, select **Oura account** in Sources, and connect. Confirm real sleep and Readiness data appears. The app requests Oura's daily-data scope.
